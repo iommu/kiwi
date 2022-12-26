@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8" />
+    <title>kiwi example</title>
+  </head>
+  <body>
+    <canvas id="canvas"/>
+    <script type="module">
+      import init, { start } from "./pkg/kiwi.js";
+      init().then(() => {
+        start();
+      });
+    </script>
+  </body>
+</html>
