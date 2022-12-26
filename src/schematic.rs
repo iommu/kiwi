@@ -51,8 +51,34 @@ impl Wire {
     }
 }
 
+pub struct Junction {
+  pub point: Point,
+  pub diameter: f64,
+  pub color: (u8, u8, u8, u8),
+  pub uuid: UUID,
+}
+
+impl Junction {
+  fn new(point: Point) -> Junction {
+    Junction {
+        point: point,
+        diameter: 1.0,
+        color: (0, 0, 0, 0),
+        uuid: "hello".to_string(),
+    }
+  }
+
+  fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64)) {
+    // todo : move point based on diam
+    context
+        .arc(pos.0 + self.point.x, pos.1 + self.point.y, self.diameter*5.0, 0.0, f64::consts::PI * 2.0)
+        .unwrap();
+  }
+}
+
 pub struct Schematic {
     pub wires: Vec<Wire>,
+    pub juncs: Vec<Junction>,
 }
 
 impl Schematic {
@@ -62,12 +88,19 @@ impl Schematic {
             Point { x: 100.0, y: 100.0 },
             Point { x: 100.0, y: 200.0 },
         ])];
-        Schematic { wires: wires }
+        let juncs = vec![
+          Junction::new(Point { x: 0.0, y: 100.0 }), 
+          Junction::new(Point { x: 100.0, y: -100.0 })
+        ];
+        Schematic { wires: wires, juncs: juncs }
     }
 
     pub fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64)) {
         for wire in &self.wires {
             wire.draw(context, pos);
         }
+        for junc in &self.juncs {
+          junc.draw(context, pos);
+      }
     }
 }
