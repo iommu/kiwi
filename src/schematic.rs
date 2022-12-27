@@ -52,11 +52,11 @@ impl Wire {
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
         // draw point to point using stroke
         context.move_to(
-            (pos.0 + self.points[0].x) * scale,
-            (pos.1 + self.points[0].y) * scale,
+            ( self.points[0].x) * scale + pos.0,
+            (self.points[0].y) * scale + pos.1,
         );
         for point in &self.points {
-            context.line_to((pos.0 + point.x) * scale, (pos.1 + point.y) * scale);
+            context.line_to((point.x) * scale + pos.0, (point.y) * scale + pos.1);
         }
     }
 }
@@ -83,8 +83,8 @@ impl Junction {
         // todo : move point based on diam
         context
             .arc(
-                (pos.0 + self.point.x) * scale,
-                (pos.1 + self.point.y) * scale,
+                (self.point.x) * scale + pos.0,
+                (self.point.y) * scale + pos.1,
                 (self.diameter * 5.0) * scale,
                 0.0,
                 f64::consts::PI * 2.0,
