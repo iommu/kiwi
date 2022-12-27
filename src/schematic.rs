@@ -3,18 +3,23 @@ use std::fs;
 use symbolic_expressions;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+
+#[derive(Debug, Clone)]
 pub struct Pos {
     pub x: f64,
     pub y: f64,
     pub angle: f64,
 }
 
+#[derive(Debug, Clone)]
 pub struct Point {
     pub x: f64,
     pub y: f64,
 }
 
 type Points = Vec<Point>;
+
+#[derive(Debug, Clone)]
 pub struct Stroke {
     pub width: f64,
     pub s_type: u8,              // todo , reserved word?
@@ -23,6 +28,8 @@ pub struct Stroke {
 
 type UUID = String; // todo : real uuid obj
 
+
+#[derive(Debug, Clone)]
 pub struct Wire {
     pub points: Points,
     pub stroke: Stroke,
@@ -42,14 +49,19 @@ impl Wire {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64)) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
         // draw point to point using stroke
-        context.move_to(pos.0 + self.points[0].x, pos.1 + self.points[0].y);
+        context.move_to(
+            (pos.0 + self.points[0].x) * scale,
+            (pos.1 + self.points[0].y) * scale,
+        );
         for point in &self.points {
-            context.line_to(pos.0 + point.x, pos.1 + point.y);
+            context.line_to((pos.0 + point.x) * scale, (pos.1 + point.y) * scale);
         }
     }
 }
+
+#[derive(Debug, Clone)]
 pub struct Junction {
     pub point: Point,
     pub diameter: f64,
@@ -67,13 +79,13 @@ impl Junction {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64)) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
         // todo : move point based on diam
         context
             .arc(
-                pos.0 + self.point.x,
-                pos.1 + self.point.y,
-                self.diameter * 5.0,
+                (pos.0 + self.point.x) * scale,
+                (pos.1 + self.point.y) * scale,
+                (self.diameter * 5.0) * scale,
                 0.0,
                 f64::consts::PI * 2.0,
             )
@@ -81,6 +93,7 @@ impl Junction {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Schematic {
     pub wires: Vec<Wire>,
     pub juncs: Vec<Junction>,
@@ -131,23 +144,28 @@ impl Schematic {
                                     for xy in property.list().unwrap() {
                                         if xy.is_list() {
                                             let xy = xy.list().unwrap();
-                                            points.push(Point { 
-                                                x: xy[1].string().unwrap().parse::<f64>().unwrap(), 
-                                                y: xy[2].string().unwrap().parse::<f64>().unwrap() 
+                                            points.push(Point {
+                                                x: xy[1].string().unwrap().parse::<f64>().unwrap(),
+                                                y: xy[2].string().unwrap().parse::<f64>().unwrap(),
                                             });
                                         }
                                     }
-                                },
+                                }
                                 "uuid" => {
-                                    uuid = property.list().unwrap()[1].string().unwrap().to_string();
-                                },
+                                    uuid =
+                                        property.list().unwrap()[1].string().unwrap().to_string();
+                                }
                                 // todo : stroke
                                 _ => {
                                     //println!("{:?}", name);
                                 }
                             }
                         }
-                        wires.push(Wire { points: points, stroke: stroke, uuid: uuid });
+                        wires.push(Wire {
+                            points: points,
+                            stroke: stroke,
+                            uuid: uuid,
+                        });
                         //println!("{:?}", object);
                     }
                     _ => {
@@ -184,12 +202,15 @@ impl Schematic {
         }
     }
 
-    pub fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64)) {
+    pub fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+        context.clear_rect(0.0, 0.0, 640.0, 480.0);
+        context.begin_path();
         for wire in &self.wires {
-            wire.draw(context, pos);
+            wire.draw(context, pos, scale);
         }
         for junc in &self.juncs {
-            junc.draw(context, pos);
+            junc.draw(context, pos, scale);
         }
+        context.stroke();
     }
 }

@@ -6,36 +6,30 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 mod schematic;
 
-fn draw(context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), schematic: &Schematic) {
-    context.clear_rect(0.0, 0.0, 640.0, 480.0);
-    context.begin_path();
+#[wasm_bindgen]
+extern "C" {
+    // Use `js_namespace` here to bind `console.log(..)` instead of just
+    // `log(..)`
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
 
-    // Draw the outer circle.
-    context
-        .arc(pos.0 + 75.0, pos.1 + 75.0, 50.0, 0.0, f64::consts::PI * 2.0)
-        .unwrap();
+    // The `console.log` is quite polymorphic, so we can bind it with multiple
+    // signatures. Note that we need to use `js_name` to ensure we always call
+    // `log` in JS.
+    #[wasm_bindgen(js_namespace = console, js_name = log)]
+    fn log_u32(a: u32);
 
-    // Draw the mouth.
-    context.move_to(pos.0 + 110.0, pos.1 + 75.0);
-    context
-        .arc(pos.0 + 75.0, pos.1 + 75.0, 35.0, 0.0, f64::consts::PI)
-        .unwrap();
-
-    // Draw the left eye.
-    context.move_to(pos.0 + 65.0, pos.1 + 65.0);
-    context
-        .arc(pos.0 + 60.0, pos.1 + 65.0, 5.0, 0.0, f64::consts::PI * 2.0)
-        .unwrap();
-
-    // Draw the right eye.
-    context.move_to(pos.0 + 95.0, pos.1 + 65.0);
-    context
-        .arc(pos.0 + 90.0, pos.1 + 65.0, 5.0, 0.0, f64::consts::PI * 2.0)
-        .unwrap();
-    schematic.draw(context, pos);
-
-    context.stroke();
+    // Multiple arguments too!
+    #[wasm_bindgen(js_namespace = console, js_name = log)]
+    fn log_many(a: &str, b: &str);
 }
+
+macro_rules! console_log {
+    // Note that this is using the `log` function imported above during
+    // `bare_bones`
+    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+}
+
 
 #[wasm_bindgen]
 pub fn start(file: &str) -> Result<(), JsValue> {
@@ -54,14 +48,16 @@ pub fn start(file: &str) -> Result<(), JsValue> {
     let context = Rc::new(context);
     let pressed = Rc::new(Cell::new(false));
     let coords = Rc::new(Cell::new((0.0f64, 0.0f64)));
+    let scale = Rc::new(Cell::new(2.0f64));
     let delta = Rc::new(Cell::new((0.0f64, 0.0f64)));
     let schematic = Schematic::new(file);
-    draw(&context, (0.0, 0.0), &schematic);
+    schematic.draw(&context, coords.get(), scale.get());
     {
         let context = context.clone();
         let pressed = pressed.clone();
         let coords = coords.clone();
-        // let schematic = schematic.clone();
+        let scale = scale.clone();
+        let schematic = schematic.clone();
         let delta = delta.clone();
         let closure = Closure::wrap(Box::new(move |event: web_sys::MouseEvent| {
             if pressed.get() {
@@ -70,7 +66,8 @@ pub fn start(file: &str) -> Result<(), JsValue> {
                     coords.get().1 + event.offset_y() as f64 - delta.get().1,
                 ));
                 delta.set((event.offset_x() as f64, event.offset_y() as f64));
-                draw(&context, coords.get(), &schematic);
+                schematic.draw(&context, coords.get(), scale.get());
+
             }
         }) as Box<dyn FnMut(_)>);
         canvas.add_event_listener_with_callback("mousemove", closure.as_ref().unchecked_ref())?;
@@ -81,6 +78,7 @@ pub fn start(file: &str) -> Result<(), JsValue> {
         let context = context.clone();
         let pressed = pressed.clone();
         let coords = coords.clone();
+        
         let delta = delta.clone();
         let closure = Closure::wrap(Box::new(move |event: web_sys::MouseEvent| {
             pressed.set(true);
@@ -96,6 +94,22 @@ pub fn start(file: &str) -> Result<(), JsValue> {
             pressed.set(false);
         }) as Box<dyn FnMut(_)>);
         canvas.add_event_listener_with_callback("mouseup", closure.as_ref().unchecked_ref())?;
+        closure.forget();
+    }
+    {
+        let context = context.clone();
+        let pressed = pressed.clone();
+        let coords = coords.clone();
+        let scale = scale.clone();
+        let schematic = schematic.clone();
+        // let schematic = schematic.clone();
+        let delta = delta.clone();
+        let closure = Closure::wrap(Box::new(move |event: web_sys::WheelEvent| {
+            event.prevent_default();
+            scale.set(scale.get()+ (event.delta_y() as f64 / 500.0));
+            schematic.draw(&context, coords.get(), scale.get());
+        }) as Box<dyn FnMut(_)>);
+        canvas.add_event_listener_with_callback("wheel", closure.as_ref().unchecked_ref())?;
         closure.forget();
     }
 
