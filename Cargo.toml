@@ -11,6 +11,7 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
+symbolic_expressions = "5.0.3"
 js-sys = "0.3.60"
 wasm-bindgen = "0.2.83"
 

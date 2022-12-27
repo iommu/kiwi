@@ -38,7 +38,7 @@ fn draw(context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), schematic:
 }
 
 #[wasm_bindgen]
-pub fn start() -> Result<(), JsValue> {
+pub fn start(file: &str) -> Result<(), JsValue> {
     let document = web_sys::window().unwrap().document().unwrap();
     let canvas = document
         .create_element("canvas")?
@@ -55,7 +55,7 @@ pub fn start() -> Result<(), JsValue> {
     let pressed = Rc::new(Cell::new(false));
     let coords = Rc::new(Cell::new((0.0f64, 0.0f64)));
     let delta = Rc::new(Cell::new((0.0f64, 0.0f64)));
-    let schematic = Schematic::new();
+    let schematic = Schematic::new(file);
     draw(&context, (0.0, 0.0), &schematic);
     {
         let context = context.clone();
