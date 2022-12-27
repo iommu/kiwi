@@ -34,8 +34,8 @@
             reader.readAsText(file, "UTF-8");
             reader.onload = function (evt) {
               init().then(() => {
-        start(evt.target.result);
-      });
+                start(evt.target.result);
+              });
             }
           }
         });
@@ -55,6 +55,15 @@
     module.dropHandler = dropHandler;
 
     module.dragOverHandler = dragOverHandler;
+    fetch('test/example.kicad_sch')
+      .then(response => response.text())
+      .then(text => {
+        init().then(() => {
+          console.log(text);
+          start(text);
+        });
+      });
+
   </script>
 </body>
 
