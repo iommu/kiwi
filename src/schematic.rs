@@ -259,7 +259,7 @@ pub struct Property {
     pub key: String,
     pub value: String,
     pub id: i32,
-    pub pos: Point,
+    pub pos: Pos,
     // todo : effect
 }
 
@@ -269,7 +269,7 @@ impl Property {
             key: "".to_string(),
             value: "".to_string(),
             id: 0,
-            pos: Point { x: 0.0, y: 0.0 },
+            pos: Pos { x: 0.0, y: 0.0, angle: 0.0},
         }
     }
 }
@@ -530,9 +530,83 @@ impl Parser {
             //
             nconn
         };
-        // let p_symb = | obj : &Sexp | -> Symbol {
-        // };
+        let p_symb = | obj : &Sexp | -> Symbol {
+            let mut symb = Symbol::blank();
+            //
+            for obj in obj.list().unwrap() {
+                let name = get_name(obj);
+                match (obj.is_list(), name) {
+                    (false, _) => {
+                        symb.id = obj.string().unwrap();
+                    }
+                    (true, "polyline") => {
+                        symb.lines.push(p_poly(obj));
+                    }
+                    // (true, "arc") => {
+                    //     symb.arcs.push(p_arc(obj));
+                    // }
+                    // (true, "pin") => {
+                    //     symb.arcs.push(p_arc(obj));
+                    // }
+                    (true, "uuid") => {
+                        symb.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
+                    }
+                    // todo : (power)
+                    // todo : pin_names
+                    // todo : offset
+                    // todo : in_bom
+                    // todo : on_board
+                    _ => {
+                        //println!("{:?}", name);
+                    }
+                }
+            }
+            //
+            symb
+        };
         // let p_symb_inst = | obj : &Sexp | -> SymbolInst {
+        //     let mut symb = Symbol::blank();
+        //     //
+        //     for obj in obj.list().unwrap() {
+        //         let name = get_name(obj);
+        //         match (obj.is_list(), name) {
+        //             (false, _) => {
+        //                 symb.id = obj.string().unwrap();
+        //             }
+        //             (true, "property") => {
+        //                 let props =  obj.list().unwrap();
+        //                 let mut prop = Property::blank();
+        //                 //
+        //                 prop.key = props[1].string().unwrap();
+        //                 prop.value = props[2].string().unwrap();
+        //                 prop.id = props[3].string().unwrap().parse::<i32>().unwrap();
+        //                 if props[4].is_list(){
+        //                     let at = props[4].list().unwrap();
+        //                     if at[0].string().unwrap().as_str() != "at" {break;}
+        //                     prop.pos.x = at[1].string().unwrap().parse::<f64>().unwrap();
+        //                     prop.pos.y = at[2].string().unwrap().parse::<f64>().unwrap();
+        //                     prop.pos.z = at[3].string().unwrap().parse::<f64>().unwrap();
+        //                 }
+        //                 // todo : effect
+        //                 // todo : "at" parser
+        //                 // todo : point => pos
+            
+        //             }
+        //             (true, "uuid") => {
+        //                 wire.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
+        //             }
+        //             // todo : (power)
+        //             // todo : pin_names
+        //             // todo : offset
+        //             // todo : in_bom
+        //             // todo : on_board
+        //             _ => {
+        //                 //println!("{:?}", name);
+        //             }
+        //         }
+        //     }
+        //     //
+        //     symb
         // };
 
         // Lets Parse!
