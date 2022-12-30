@@ -5,6 +5,32 @@ use symbolic_expressions::Sexp;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
+
+#[wasm_bindgen]
+extern "C" {
+    // Use `js_namespace` here to bind `console.log(..)` instead of just
+    // `log(..)`
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+
+    // The `console.log` is quite polymorphic, so we can bind it with multiple
+    // signatures. Note that we need to use `js_name` to ensure we always call
+    // `log` in JS.
+    #[wasm_bindgen(js_namespace = console, js_name = log)]
+    fn log_u32(a: u32);
+
+    // Multiple arguments too!
+    #[wasm_bindgen(js_namespace = console, js_name = log)]
+    fn log_many(a: &str, b: &str);
+}
+
+macro_rules! console_log {
+    // Note that this is using the `log` function imported above during
+    // `bare_bones`
+    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+}
+
+
 #[derive(Debug, Clone)]
 pub struct Pos {
     pub x: f64,
@@ -269,13 +295,31 @@ impl Property {
             key: "".to_string(),
             value: "".to_string(),
             id: 0,
-            pos: Pos { x: 0.0, y: 0.0, angle: 0.0},
+            pos: Pos {
+                x: 0.0,
+                y: 0.0,
+                angle: 0.0,
+            },
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Pin {}
+pub struct Pin {
+    pub pos: Pos,
+    pub len: f64,
+    // pub name: (String, Effect),
+    // pub numb: (i32, Effect),
+}
+
+impl Pin {
+    fn blank() -> Pin {
+        Pin {
+            pos: Pos { x: 0.0, y: 0.0, angle: 0.0 },
+            len: 0.0,
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Symbol {
@@ -294,6 +338,18 @@ impl Symbol {
             pins: Vec::<Pin>::new(),
         }
     }
+
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+        console_log!("drawing symbol {}", self.id);
+        for line in &self.lines {
+            console_log!("drawing_line");
+            line.draw(context, pos, scale);
+        }
+        for arc in &self.arcs {
+            console_log!("drawing_arc");
+            arc.draw(context, pos, scale);
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -301,6 +357,7 @@ pub struct SymbolInst {
     pub id: String,
     pub props: Vec<Property>,
     pub point: Point,
+    pub symb: Symbol,
     pub uuid: UUID,
 }
 
@@ -310,11 +367,13 @@ impl SymbolInst {
             id: "".to_string(),
             props: Vec::<Property>::new(),
             point: Point { x: 0.0, y: 0.0 },
+            symb: Symbol::blank(),
             uuid: "".to_string(),
         }
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+        self.symb.draw(context, pos, scale)
         // // draws an "x"
         // let size = 1.0;
         // context.move_to(
@@ -332,36 +391,86 @@ impl SymbolInst {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Label {
+    pub id: String,
+    pub shape: u8, // todo : enum
+    pub pos: Pos,
+    // todo : effects
+    pub uuid: UUID,
+}
+
+// types : 0x00 = heir:
+// types : 0x10 = glob:
+// types : 0x20 = local:
+// types : 0x30 = noconn:
+
+impl Label {
+    fn blank() -> Label {
+        Label {
+            id: "".to_string(),
+            shape: 0,
+            pos: Pos {
+                x: 0.0,
+                y: 0.0,
+                angle: 0.0,
+            },
+            uuid: "".to_string(),
+        }
+    }
+
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+        // draws an label based on label type
+        // todo : type based rendering
+        if (self.shape != 0xf0) {
+            return;
+        }
+        let size = 1.0;
+
+        // let points = [
+            
+        // ];
+
+        // draw text
+        context.move_to(
+            (self.pos.x + size * 2.5) * scale + pos.0,
+            (self.pos.y) * scale + pos.1,
+        );
+        context.set_font(format!("{}px monospace", (2.0 * scale) as i32).as_str());
+        context.fill_text(
+            self.id.as_str(),
+            (self.pos.x + size * 2.5) * scale + pos.0,
+            (self.pos.y + 1.0) * scale + pos.1,
+        );
+
+        // draw frame
+        context.move_to((self.pos.x) * scale + pos.0, (self.pos.y) * scale + pos.1);
+        context.line_to(
+            (self.pos.x + size) * scale + pos.0,
+            (self.pos.y + size) * scale + pos.1,
+        );
+        context.line_to(
+            (self.pos.x + size * 2.0) * scale + pos.0,
+            (self.pos.y + size) * scale + pos.1,
+        );
+        context.line_to(
+            (self.pos.x + size * 2.0) * scale + pos.0,
+            (self.pos.y - size) * scale + pos.1,
+        );
+        context.line_to(
+            (self.pos.x + size) * scale + pos.0,
+            (self.pos.y - size) * scale + pos.1,
+        );
+        context.line_to((self.pos.x) * scale + pos.0, (self.pos.y) * scale + pos.1);
+    }
+}
+
 fn get_name(object: &Sexp) -> &str {
     match object.is_list() {
         true => object.list().unwrap()[0].string().unwrap().as_str(),
         false => object.string().unwrap().as_str(),
         _ => "",
     }
-}
-
-#[wasm_bindgen]
-extern "C" {
-    // Use `js_namespace` here to bind `console.log(..)` instead of just
-    // `log(..)`
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
-
-    // The `console.log` is quite polymorphic, so we can bind it with multiple
-    // signatures. Note that we need to use `js_name` to ensure we always call
-    // `log` in JS.
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_u32(a: u32);
-
-    // Multiple arguments too!
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_many(a: &str, b: &str);
-}
-
-macro_rules! console_log {
-    // Note that this is using the `log` function imported above during
-    // `bare_bones`
-    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
 }
 
 pub struct Parser {
@@ -443,6 +552,68 @@ impl Parser {
             //
             poly
         };
+        let p_arc = |obj: &Sexp| -> Arc {
+            let mut arc = Arc::blank();
+
+            for obj in obj.list().unwrap() {
+                let name = get_name(obj);
+                match name {
+                    "start" | "mid" | "end" => {
+                        if obj.is_list() {
+                            let xy = obj.list().unwrap();
+                            let point = Point {
+                                x: xy[1].string().unwrap().parse::<f64>().unwrap(),
+                                y: xy[2].string().unwrap().parse::<f64>().unwrap(),
+                            };
+                            match name {
+                                "start" => {
+                                    arc.points.0 = point;
+                                }
+                                "mid" => {
+                                    arc.points.1 = point;
+                                }
+                                "end" => {
+                                    arc.points.2 = point;
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                    "uuid" => {
+                        arc.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
+                    }
+                    // todo : stroke
+                    _ => {
+                        //println!("{:?}", name);
+                    }
+                }
+            }
+            arc
+        };
+        let p_pin = |obj: &Sexp| -> Pin {
+            let mut pin = Pin::blank();
+            //
+            for obj in obj.list().unwrap() {
+                let name = get_name(obj);
+                match name {
+                    "start" | "mid" | "end" => {
+                        if obj.is_list() {
+                            let xy = obj.list().unwrap();
+                            let point = Point {
+                                x: xy[1].string().unwrap().parse::<f64>().unwrap(),
+                                y: xy[2].string().unwrap().parse::<f64>().unwrap(),
+                            };
+                        }
+                    }
+                    // todo : stroke
+                    _ => {
+                        //println!("{:?}", name);
+                    }
+                }
+            }
+            //
+            pin
+        };
         let p_text = |obj: &Sexp| -> Text {
             let mut text = Text::blank();
             //
@@ -471,7 +642,6 @@ impl Parser {
             //
             text
         };
-        //let p_arc = |obj: &Sexp| -> Arc {};
         let p_wire = |obj: &Sexp| -> Wire {
             let mut wire = Wire::blank();
             //
@@ -502,7 +672,6 @@ impl Parser {
             //
             wire
         };
-        //let p_pin = |obj: &Sexp| -> Pin {};
         let p_nconn = |obj: &Sexp| -> Noconnect {
             let mut nconn = Noconnect::blank();
             //
@@ -530,24 +699,107 @@ impl Parser {
             //
             nconn
         };
-        let p_symb = | obj : &Sexp | -> Symbol {
+        let p_label = |obj: &Sexp| -> Label {
+            let mut label = Label::blank();
+            //
+            let label_name = get_name(obj);
+            for obj in obj.list().unwrap() {
+                let name = get_name(obj);
+                match (obj.is_list(), name) {
+                    (false, _) => {
+                        label.id = obj.string().unwrap().clone();
+                    }
+                    (true, "shape") => {
+                        match label_name {
+                            "hierarchical_label" => label.shape = 0xf0,
+                            _ => {}
+                        }
+                        // todo shape = input...
+                    }
+                    (true, "at") => {
+                        if !obj.is_list() {
+                            continue;
+                        }
+                        let xya = obj.list().unwrap();
+                        label.pos.x = xya[1].string().unwrap().parse::<f64>().unwrap();
+                        label.pos.y = xya[2].string().unwrap().parse::<f64>().unwrap();
+                        label.pos.angle = xya[3].string().unwrap().parse::<f64>().unwrap();
+                    }
+                    (true, "uuid") => {
+                        label.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
+                    }
+                    // todo : stroke
+                    _ => { // should be string
+                         //println!("{:?}", name);
+                    }
+                }
+            }
+            //
+            label
+        };
+        let p_symb = |obj: &Sexp| -> Symbol {
             let mut symb = Symbol::blank();
             //
             for obj in obj.list().unwrap() {
                 let name = get_name(obj);
                 match (obj.is_list(), name) {
                     (false, _) => {
-                        symb.id = obj.string().unwrap();
+                        symb.id = obj.string().unwrap().clone();
                     }
                     (true, "polyline") => {
                         symb.lines.push(p_poly(obj));
                     }
-                    // (true, "arc") => {
-                    //     symb.arcs.push(p_arc(obj));
-                    // }
-                    // (true, "pin") => {
-                    //     symb.arcs.push(p_arc(obj));
-                    // }
+                    (true, "arc") => {
+                        symb.arcs.push(p_arc(obj));
+                    }
+                    (true, "pin") => {
+                        symb.arcs.push(p_arc(obj));
+                    }
+                    // todo : (power)
+                    // todo : pin_names
+                    // todo : offset
+                    // todo : in_bom
+                    // todo : on_board
+                    _ => {
+                        //println!("{:?}", name);
+                    }
+                }
+            }
+            console_log!("new symbol : {}", symb.id);
+            //
+            symb
+        };
+        let p_symb_inst = | obj : &Sexp | -> SymbolInst {
+            let mut symb = SymbolInst::blank();
+            //
+            for obj in obj.list().unwrap() {
+                let name = get_name(obj);
+                match (obj.is_list(), name) {
+                    (false, _) => {
+                        symb.id = obj.string().unwrap().clone();
+                    }
+                    (true, "property") => {
+                        let props =  obj.list().unwrap();
+                        let mut prop = Property::blank();
+                        //
+                        prop.key = props[1].string().unwrap().clone();
+                        prop.value = props[2].string().unwrap().clone();
+                        prop.id = props[3].list().unwrap()[1].string().unwrap().parse::<i32>().unwrap();
+                        if props[4].is_list(){
+                            let at = props[4].list().unwrap();
+                            if at[0].string().unwrap().as_str() != "at" {break;}
+                            prop.pos.x = at[1].string().unwrap().parse::<f64>().unwrap();
+                            prop.pos.y = at[2].string().unwrap().parse::<f64>().unwrap();
+                            prop.pos.angle = at[3].string().unwrap().parse::<f64>().unwrap();
+                        }
+                        // todo : effect
+                        // todo : "at" parser
+                        // todo : point => pos
+                        symb.props.push(prop);
+                    }
+                    (true, "symbol") => {
+                       symb.symb = p_symb(obj);
+                    }
                     (true, "uuid") => {
                         symb.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
                     }
@@ -564,50 +816,6 @@ impl Parser {
             //
             symb
         };
-        // let p_symb_inst = | obj : &Sexp | -> SymbolInst {
-        //     let mut symb = Symbol::blank();
-        //     //
-        //     for obj in obj.list().unwrap() {
-        //         let name = get_name(obj);
-        //         match (obj.is_list(), name) {
-        //             (false, _) => {
-        //                 symb.id = obj.string().unwrap();
-        //             }
-        //             (true, "property") => {
-        //                 let props =  obj.list().unwrap();
-        //                 let mut prop = Property::blank();
-        //                 //
-        //                 prop.key = props[1].string().unwrap();
-        //                 prop.value = props[2].string().unwrap();
-        //                 prop.id = props[3].string().unwrap().parse::<i32>().unwrap();
-        //                 if props[4].is_list(){
-        //                     let at = props[4].list().unwrap();
-        //                     if at[0].string().unwrap().as_str() != "at" {break;}
-        //                     prop.pos.x = at[1].string().unwrap().parse::<f64>().unwrap();
-        //                     prop.pos.y = at[2].string().unwrap().parse::<f64>().unwrap();
-        //                     prop.pos.z = at[3].string().unwrap().parse::<f64>().unwrap();
-        //                 }
-        //                 // todo : effect
-        //                 // todo : "at" parser
-        //                 // todo : point => pos
-            
-        //             }
-        //             (true, "uuid") => {
-        //                 wire.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
-        //             }
-        //             // todo : (power)
-        //             // todo : pin_names
-        //             // todo : offset
-        //             // todo : in_bom
-        //             // todo : on_board
-        //             _ => {
-        //                 //println!("{:?}", name);
-        //             }
-        //         }
-        //     }
-        //     //
-        //     symb
-        // };
 
         // Lets Parse!
         for obj in obj.list().unwrap() {
@@ -615,21 +823,21 @@ impl Parser {
             let name = get_name(obj);
             match (obj.is_list(), name) {
                 (false, "version") => schem.version = obj.string().unwrap().parse::<i32>().unwrap(),
-                // (true, "lib_symbols") => {
-                //     for obj in obj.list().unwrap() {
-                //         let name = get_name(obj);
-                //         match (object.is_list(), name) {
-                //         (true, "symbol") => {schem.lib.push(p_symb(obj))}
-                //         _ => {}
-                //         }
-                //     }
-                // }
+                (true, "lib_symbols") => {
+                    for obj in obj.list().unwrap() {
+                        let name = get_name(obj);
+                        match (obj.is_list(), name) {
+                        (true, "symbol") => {schem.lib.push(p_symb_inst(obj))}
+                        _ => {}
+                        }
+                    }
+                }
                 (true, "wire") => schem.wires.push(p_wire(obj)),
                 (true, "junction") => schem.juncs.push(p_junc(obj)),
                 (true, "text") => schem.texts.push(p_text(obj)),
                 (true, "polyline") => schem.polys.push(p_poly(obj)),
                 (true, "no_connect") => schem.nocons.push(p_nconn(obj)), // todo : fix naming
-                (true, "hierarchical_label") => {}
+                (true, "hierarchical_label") => schem.labels.push(p_label(obj)),
                 _ => {}
             }
         }
@@ -645,8 +853,8 @@ pub struct Schematic {
     pub texts: Vec<Text>,
     pub polys: Vec<Polyline>,
     pub nocons: Vec<Noconnect>,
-    pub lib: Vec<Symbol>,
-    pub symb_temps: Vec<SymbolInst>,
+    pub labels: Vec<Label>,
+    pub lib: Vec<SymbolInst>,
     pub symbs: Vec<SymbolInst>,
 
     //
@@ -661,8 +869,8 @@ impl Schematic {
             texts: Vec::<Text>::new(),
             polys: Vec::<Polyline>::new(),
             nocons: Vec::<Noconnect>::new(),
-            lib: Vec::<Symbol>::new(),
-            symb_temps: Vec::<SymbolInst>::new(),
+            labels: Vec::<Label>::new(),
+            lib: Vec::<SymbolInst>::new(),
             symbs: Vec::<SymbolInst>::new(),
             version: 0i32,
         }
@@ -692,6 +900,10 @@ impl Schematic {
         for nocon in &self.nocons {
             nocon.draw(context, pos, scale);
         }
+        for label in &self.labels {
+            label.draw(context, pos, scale);
+        }
+        self.lib[1].draw(context, pos, scale);
         context.stroke();
     }
 }
