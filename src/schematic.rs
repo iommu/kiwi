@@ -676,6 +676,19 @@ impl Parser {
         let mut schem = Schematic::blank();
 
         // generic parsers
+        let p_pos = |obj: &Sexp| -> Pos {
+            let xya = obj.list().unwrap();
+            let x = xya[1].string().unwrap().parse::<f64>().unwrap();
+            let y = xya[2].string().unwrap().parse::<f64>().unwrap();
+            let a = if xya.len() >= 4 {
+                xya[3].string().unwrap().parse::<f64>().unwrap()
+            } else {
+                0.0
+            };
+
+            return Pos { x: x, y: y, a: a };
+        };
+
         let p_junc = |obj: &Sexp| -> Junction {
             let mut junction = Junction::blank();
             //
@@ -683,12 +696,7 @@ impl Parser {
                 let name = get_name(obj);
                 match (obj.is_list(), name) {
                     (true, "at") => {
-                        if !obj.is_list() {
-                            continue;
-                        }
-                        let xy = obj.list().unwrap();
-                        junction.pos.x = xy[1].string().unwrap().parse::<f64>().unwrap();
-                        junction.pos.y = xy[2].string().unwrap().parse::<f64>().unwrap();
+                        junction.pos = p_pos(obj);
                     }
                     (true, "diameter") => {
                         junction.diameter = obj.list().unwrap()[1]
@@ -717,16 +725,11 @@ impl Parser {
                 let name = get_name(obj);
                 match (obj.is_list(), name) {
                     (true, "pts") => {
-                        for xy in obj.list().unwrap() {
-                            if !xy.is_list() {
+                        for obj in obj.list().unwrap() {
+                            if !obj.is_list() {
                                 continue;
                             }
-                            let xy = xy.list().unwrap();
-                            poly.poss.push(Pos {
-                                x: xy[1].string().unwrap().parse::<f64>().unwrap(),
-                                y: xy[2].string().unwrap().parse::<f64>().unwrap(),
-                                a: 0.0,
-                            });
+                            poly.poss.push(p_pos(obj));
                         }
                     }
                     (true, "uuid") => {
@@ -746,30 +749,17 @@ impl Parser {
 
             for obj in obj.list().unwrap() {
                 let name = get_name(obj);
-                match name {
-                    "start" | "mid" | "end" => {
-                        if obj.is_list() {
-                            let xy = obj.list().unwrap();
-                            let pos = Pos {
-                                x: xy[1].string().unwrap().parse::<f64>().unwrap(),
-                                y: xy[2].string().unwrap().parse::<f64>().unwrap(),
-                                a: 0.0,
-                            };
-                            match name {
-                                "start" => {
-                                    arc.poss.0 = pos;
-                                }
-                                "mid" => {
-                                    arc.poss.1 = pos;
-                                }
-                                "end" => {
-                                    arc.poss.2 = pos;
-                                }
-                                _ => {}
-                            }
-                        }
+                match (obj.is_list(), name) {
+                    (true, "start") => {
+                        arc.poss.0 = p_pos(obj);
                     }
-                    "uuid" => {
+                    (true, "mid") => {
+                        arc.poss.1 = p_pos(obj);
+                    }
+                    (true, "end") => {
+                        arc.poss.2 = p_pos(obj);
+                    }
+                    (true, "uuid") => {
                         arc.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
                     }
                     // todo : stroke
@@ -786,13 +776,7 @@ impl Parser {
                 let name = get_name(obj);
                 match (obj.is_list(), name) {
                     (true, "at") => {
-                        if !obj.is_list() {
-                            continue;
-                        }
-                        let xy = obj.list().unwrap();
-                        pin.pos.x = xy[1].string().unwrap().parse::<f64>().unwrap();
-                        pin.pos.y = xy[2].string().unwrap().parse::<f64>().unwrap();
-                        pin.pos.a = xy[3].string().unwrap().parse::<f64>().unwrap();
+                        pin.pos = p_pos(obj);
                     }
                     (true, "length") => {
                         if !obj.is_list() {
@@ -814,27 +798,14 @@ impl Parser {
 
             for obj in obj.list().unwrap() {
                 let name = get_name(obj);
-                match name {
-                    "start" | "end" => {
-                        if obj.is_list() {
-                            let xy = obj.list().unwrap();
-                            let pos = Pos {
-                                x: xy[1].string().unwrap().parse::<f64>().unwrap(),
-                                y: xy[2].string().unwrap().parse::<f64>().unwrap(),
-                                a: 0.0,
-                            };
-                            match name {
-                                "start" => {
-                                    rect.poss.0 = pos;
-                                }
-                                "end" => {
-                                    rect.poss.1 = pos;
-                                }
-                                _ => {}
-                            }
-                        }
+                match (obj.is_list(), name) {
+                    (true, "start") => {
+                        rect.poss.0 = p_pos(obj);
                     }
-                    "uuid" => {
+                    (true, "end") => {
+                        rect.poss.1 = p_pos(obj);
+                    }
+                    (true, "uuid") => {
                         rect.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
                     }
                     // todo : stroke
@@ -850,19 +821,11 @@ impl Parser {
 
             for obj in obj.list().unwrap() {
                 let name = get_name(obj);
-                match name {
-                    "center" => {
-                        if obj.is_list() {
-                            let xy = obj.list().unwrap();
-                            let pos = Pos {
-                                x: xy[1].string().unwrap().parse::<f64>().unwrap(),
-                                y: xy[2].string().unwrap().parse::<f64>().unwrap(),
-                                a: 0.0,
-                            };
-                            circ.pos = pos;
-                        }
+                match (obj.is_list(), name) {
+                    (true, "center") => {
+                        circ.pos = p_pos(obj);
                     }
-                    "radius" => {
+                    (true, "radius") => {
                         if obj.is_list() {
                             circ.radius = obj.list().unwrap()[1]
                                 .string()
@@ -871,7 +834,7 @@ impl Parser {
                                 .unwrap();
                         }
                     }
-                    "uuid" => {
+                    (true, "uuid") => {
                         circ.uuid = obj.list().unwrap()[1].string().unwrap().clone();
                     }
                     // todo : stroke
@@ -889,12 +852,7 @@ impl Parser {
                 let name = get_name(obj);
                 match (obj.is_list(), name) {
                     (true, "at") => {
-                        if !obj.is_list() {
-                            continue;
-                        }
-                        let xy = obj.list().unwrap();
-                        text.pos.x = xy[1].string().unwrap().parse::<f64>().unwrap();
-                        text.pos.y = xy[2].string().unwrap().parse::<f64>().unwrap();
+                        text.pos = p_pos(obj);
                     }
                     // todo color
                     (true, "uuid") => {
@@ -917,16 +875,11 @@ impl Parser {
                 let name = get_name(obj);
                 match (obj.is_list(), name) {
                     (true, "pts") => {
-                        for xy in obj.list().unwrap() {
-                            if !xy.is_list() {
+                        for obj in obj.list().unwrap() {
+                            if !obj.is_list() {
                                 continue;
                             }
-                            let xy = xy.list().unwrap();
-                            wire.poss.push(Pos {
-                                x: xy[1].string().unwrap().parse::<f64>().unwrap(),
-                                y: xy[2].string().unwrap().parse::<f64>().unwrap(),
-                                a: 0.0,
-                            });
+                            wire.poss.push(p_pos(obj));
                         }
                     }
                     (true, "uuid") => {
@@ -948,12 +901,7 @@ impl Parser {
                 let name = get_name(obj);
                 match (obj.is_list(), name) {
                     (true, "at") => {
-                        if !obj.is_list() {
-                            continue;
-                        }
-                        let xy = obj.list().unwrap();
-                        nconn.pos.x = xy[1].string().unwrap().parse::<f64>().unwrap();
-                        nconn.pos.y = xy[2].string().unwrap().parse::<f64>().unwrap();
+                        nconn.pos = p_pos(obj);
                     }
                     // todo color
                     (true, "uuid") => {
@@ -986,13 +934,7 @@ impl Parser {
                         // todo shape = input...
                     }
                     (true, "at") => {
-                        if !obj.is_list() {
-                            continue;
-                        }
-                        let xya = obj.list().unwrap();
-                        label.pos.x = xya[1].string().unwrap().parse::<f64>().unwrap();
-                        label.pos.y = xya[2].string().unwrap().parse::<f64>().unwrap();
-                        label.pos.a = xya[3].string().unwrap().parse::<f64>().unwrap();
+                        label.pos = p_pos(obj);
                     }
                     (true, "uuid") => {
                         label.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
@@ -1066,13 +1008,7 @@ impl Parser {
                             .parse::<i32>()
                             .unwrap();
                         if props[4].is_list() {
-                            let at = props[4].list().unwrap();
-                            if at[0].string().unwrap().as_str() != "at" {
-                                break;
-                            }
-                            prop.pos.x = at[1].string().unwrap().parse::<f64>().unwrap();
-                            prop.pos.y = at[2].string().unwrap().parse::<f64>().unwrap();
-                            prop.pos.a = at[3].string().unwrap().parse::<f64>().unwrap();
+                            prop.pos = p_pos(&props[4]);
                         }
                         // todo : effect
                         // todo : "at" parser
@@ -1083,13 +1019,7 @@ impl Parser {
                         symb.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
                     }
                     (true, "at") => {
-                        if !obj.is_list() {
-                            continue;
-                        }
-                        let xya = obj.list().unwrap();
-                        symb.pos.x = xya[1].string().unwrap().parse::<f64>().unwrap();
-                        symb.pos.y = xya[2].string().unwrap().parse::<f64>().unwrap();
-                        symb.pos.a = xya[3].string().unwrap().parse::<f64>().unwrap();
+                       symb.pos = p_pos(obj);
                     }
                     // todo : (power)
                     // todo : pin_names
@@ -1125,13 +1055,7 @@ impl Parser {
                             .parse::<i32>()
                             .unwrap();
                         if props[4].is_list() {
-                            let at = props[4].list().unwrap();
-                            if at[0].string().unwrap().as_str() != "at" {
-                                break;
-                            }
-                            prop.pos.x = at[1].string().unwrap().parse::<f64>().unwrap();
-                            prop.pos.y = at[2].string().unwrap().parse::<f64>().unwrap();
-                            prop.pos.a = at[3].string().unwrap().parse::<f64>().unwrap();
+                            prop.pos = p_pos(&props[4]);
                         }
                         // todo : effect
                         // todo : "at" parser
