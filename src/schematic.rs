@@ -1,10 +1,10 @@
+use std::collections::HashMap;
 use std::f64;
 use std::fs;
 use symbolic_expressions;
 use symbolic_expressions::Sexp;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-
 
 #[wasm_bindgen]
 extern "C" {
@@ -29,7 +29,6 @@ macro_rules! console_log {
     // `bare_bones`
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
 }
-
 
 #[derive(Debug, Clone)]
 pub struct Pos {
@@ -88,6 +87,104 @@ impl Wire {
 }
 
 #[derive(Debug, Clone)]
+pub struct Rect {
+    pub points: (Point, Point),
+    pub stroke: Stroke,
+    pub fill: u8,
+    pub uuid: UUID,
+}
+
+impl Rect {
+    fn blank() -> Rect {
+        Rect {
+            points: (Point { x: 0.0, y: 0.0 }, Point { x: 0.0, y: 0.0 }),
+            stroke: Stroke {
+                width: 1.0,
+                s_type: 1,
+                color: (0, 0, 0, 0),
+            },
+            fill: 0,
+            uuid: "".to_string(),
+        }
+    }
+
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+        console_log!(
+            "drawing symb rect {}:{}, {}:{}, pos : {}:{}",
+            self.points.0.x,
+            self.points.0.y,
+            self.points.1.x,
+            self.points.1.y,
+            pos.0,
+            pos.1
+        );
+        console_log!(
+            "{}:{}, {}:{}",
+            (self.points.0.x) * scale + pos.0,
+            (self.points.0.y) * scale + pos.1,
+            (self.points.1.x - self.points.0.x) * scale,
+            (self.points.1.y - self.points.0.y) * scale
+        );
+
+        // draw point to point using stroke
+        context.move_to(
+            (self.points.0.x) * scale + pos.0,
+            (self.points.0.y) * scale + pos.1,
+        );
+        context.rect(
+            pos.0 +(self.points.0.x) * scale ,
+            pos.1 +(self.points.0.y) * scale ,
+            (self.points.1.x - self.points.0.x) * scale,
+            -(self.points.1.y + self.points.0.y) * scale, //todo : why?
+            
+        );
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Circ {
+    pub point: Point,
+    pub radius: f64,
+    pub stroke: Stroke,
+    pub fill: u8,
+    pub uuid: UUID,
+}
+
+impl Circ {
+    fn blank() -> Circ {
+        Circ {
+            point: Point { x: 0.0, y: 0.0 },
+            radius: 0.0,
+            stroke: Stroke {
+                width: 1.0,
+                s_type: 1,
+                color: (0, 0, 0, 0),
+            },
+            fill: 0,
+            uuid: "".to_string(),
+        }
+    }
+
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+        console_log!("DRAWING CIRC");
+        // draw point to point using stroke
+        context.move_to(
+            (self.point.x) * scale + pos.0 + (self.radius*scale),
+            (self.point.y) * scale + pos.1 + (self.radius*scale),
+        );
+        context.arc(
+            (self.point.x) * scale + pos.0,
+            (self.point.y) * scale + pos.1,
+            (self.radius) * scale,
+            0.0,
+            f64::consts::PI * 2.0,
+        );
+
+        
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Junction {
     pub point: Point,
     pub diameter: f64,
@@ -111,15 +208,13 @@ impl Junction {
             (self.point.x) * scale + pos.0,
             (self.point.y) * scale + pos.1,
         );
-        context
-            .arc(
-                (self.point.x) * scale + pos.0,
-                (self.point.y) * scale + pos.1,
-                ((self.diameter + 1.0) * 1.0) * scale,
-                0.0,
-                f64::consts::PI * 2.0,
-            )
-            .unwrap();
+        context.arc(
+            (self.point.x) * scale + pos.0,
+            (self.point.y) * scale + pos.1,
+            ((self.diameter + 0.2) * 1.0) * scale,
+            0.0,
+            f64::consts::PI * 2.0,
+        );
     }
 }
 
@@ -156,6 +251,20 @@ impl Text {
 }
 
 #[derive(Debug, Clone)]
+pub struct Effect {
+
+}
+
+impl Effect {
+    fn blank() -> Effect {
+        Effect {
+
+        }
+    }
+
+}
+
+#[derive(Debug, Clone)]
 pub struct Polyline {
     pub points: Points,
     pub stroke: Stroke,
@@ -182,6 +291,7 @@ impl Polyline {
             (self.points[0].y) * scale + pos.1,
         );
         for point in &self.points {
+            console_log!("drawing line : {}:{}", (point.x) * scale + pos.0, (point.y) * scale + pos.1);
             context.line_to((point.x) * scale + pos.0, (point.y) * scale + pos.1);
         }
     }
@@ -215,10 +325,7 @@ impl Arc {
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
         // draw point to point using stroke
-        context.move_to(
-            (self.points.0.x) * scale + pos.0,
-            (self.points.0.y) * scale + pos.1,
-        );
+
         // triiggg
         let radius = f64::sqrt(
             f64::powf(self.points.0.x - self.points.1.x, 2.0)
@@ -232,15 +339,17 @@ impl Arc {
             self.points.2.y - self.points.1.y,
             self.points.2.x - self.points.1.x,
         );
-        context
-            .arc(
-                (self.points.0.x) * scale + pos.0,
-                (self.points.0.y) * scale + pos.1,
-                radius * scale,
-                angle_start,
-                angle_stop,
-            )
-            .unwrap();
+        context.move_to(
+            (self.points.0.x) * scale + pos.0,
+            (self.points.0.y) * scale + pos.1,
+        );
+        context.arc(
+            (self.points.1.x) * scale + pos.0,
+            (self.points.1.y) * scale + pos.1,
+            radius * scale,
+            angle_start,
+            angle_stop,
+        );
     }
 }
 
@@ -306,18 +415,43 @@ impl Property {
 
 #[derive(Debug, Clone)]
 pub struct Pin {
+    // type "passive"
+    // type2? "line"
     pub pos: Pos,
     pub len: f64,
-    // pub name: (String, Effect),
-    // pub numb: (i32, Effect),
+    pub name: (String, Effect),
+    pub numb: (i32, Effect),
 }
 
 impl Pin {
     fn blank() -> Pin {
         Pin {
-            pos: Pos { x: 0.0, y: 0.0, angle: 0.0 },
+            pos: Pos {
+                x: 0.0,
+                y: 0.0,
+                angle: 0.0,
+            },
             len: 0.0,
+            name: ("".to_string(), Effect::blank()),
+            numb: (0i32, Effect::blank()),
         }
+    }
+
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+        let angle = self.pos.angle/180.0*f64::consts::PI;
+        let len = (angle.cos()*self.len, angle.sin()*self.len);
+        console_log!("angle : {}", angle);
+
+        console_log!("pin : {}:{}", angle.cos(), angle.sin());
+        console_log!("pin : {}:{}", len.0, len.1);
+        context.move_to(
+            (self.pos.x- len.0/2.0) * scale + pos.0,
+            (self.pos.y - len.1/2.0 ) * scale + pos.1,
+        );
+        context.line_to(
+            (self.pos.x + len.0/2.0) * scale + pos.0,
+            (self.pos.y + len.1/2.0) * scale + pos.1,
+        );
     }
 }
 
@@ -327,6 +461,8 @@ pub struct Symbol {
     pub lines: Vec<Polyline>,
     pub arcs: Vec<Arc>,
     pub pins: Vec<Pin>,
+    pub rects: Vec<Rect>,
+    pub circs: Vec<Circ>,
 }
 
 impl Symbol {
@@ -336,44 +472,56 @@ impl Symbol {
             lines: Vec::<Polyline>::new(),
             arcs: Vec::<Arc>::new(),
             pins: Vec::<Pin>::new(),
+            rects: Vec::<Rect>::new(),
+            circs: Vec::<Circ>::new(),
         }
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
-        console_log!("drawing symbol {}", self.id);
+        console_log!("drawing {}", self.id);
         for line in &self.lines {
-            console_log!("drawing_line");
             line.draw(context, pos, scale);
         }
         for arc in &self.arcs {
-            console_log!("drawing_arc");
             arc.draw(context, pos, scale);
+        }
+        for pin in &self.pins {
+            pin.draw(context, pos, scale);
+        }
+        for rect in &self.rects {
+            rect.draw(context, pos, scale);
+        }
+        for circ in &self.circs {
+            circ.draw(context, pos, scale);
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct SymbolInst {
+pub struct SymbolTemp {
     pub id: String,
     pub props: Vec<Property>,
     pub point: Point,
-    pub symb: Symbol,
+    pub symbs: Vec<Symbol>,
     pub uuid: UUID,
 }
 
-impl SymbolInst {
-    fn blank() -> SymbolInst {
-        SymbolInst {
+impl SymbolTemp {
+    fn blank() -> SymbolTemp {
+        SymbolTemp {
             id: "".to_string(),
             props: Vec::<Property>::new(),
             point: Point { x: 0.0, y: 0.0 },
-            symb: Symbol::blank(),
+            symbs: Vec::<Symbol>::new(),
             uuid: "".to_string(),
         }
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
-        self.symb.draw(context, pos, scale)
+        for symb in &self.symbs {
+            symb.draw(context, pos, scale)
+
+        }
         // // draws an "x"
         // let size = 1.0;
         // context.move_to(
@@ -388,6 +536,38 @@ impl SymbolInst {
         // );
         // context.line_to(( self.point.x + size) * scale + pos.0,
         // (self.point.y - size) * scale + pos.1);
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SymbolInst {
+    pub id: String,
+    pub parent: Option<SymbolTemp>,
+    pub props: Vec<Property>,
+    pub pos: Pos,
+    pub uuid: UUID,
+}
+
+impl SymbolInst {
+    fn blank() -> SymbolInst {
+        SymbolInst {
+            id: "".to_string(),
+            parent: None,
+            props: Vec::<Property>::new(),
+            pos: Pos {
+                x: 0.0,
+                y: 0.0,
+                angle: 0.0,
+            },
+            uuid: "".to_string(),
+        }
+    }
+
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+        if self.parent.is_some() {
+            let pos = (pos.0 + (self.pos.x * scale), pos.1 + (self.pos.y * scale));
+            self.parent.as_ref().unwrap().draw(context, pos, scale);
+        }
     }
 }
 
@@ -428,7 +608,7 @@ impl Label {
         let size = 1.0;
 
         // let points = [
-            
+
         // ];
 
         // draw text
@@ -592,18 +772,24 @@ impl Parser {
         };
         let p_pin = |obj: &Sexp| -> Pin {
             let mut pin = Pin::blank();
-            //
             for obj in obj.list().unwrap() {
                 let name = get_name(obj);
-                match name {
-                    "start" | "mid" | "end" => {
-                        if obj.is_list() {
-                            let xy = obj.list().unwrap();
-                            let point = Point {
-                                x: xy[1].string().unwrap().parse::<f64>().unwrap(),
-                                y: xy[2].string().unwrap().parse::<f64>().unwrap(),
-                            };
+                match (obj.is_list(), name) {
+                    (true, "at") => {
+                        if !obj.is_list() {
+                            continue;
                         }
+                        let xy = obj.list().unwrap();
+                        pin.pos.x = xy[1].string().unwrap().parse::<f64>().unwrap();
+                        pin.pos.y = xy[2].string().unwrap().parse::<f64>().unwrap();
+                        pin.pos.angle = xy[3].string().unwrap().parse::<f64>().unwrap();
+                    }
+                    (true, "length") => {
+                        if !obj.is_list() {
+                            continue;
+                        }
+                        let xy = obj.list().unwrap();
+                        pin.len = xy[1].string().unwrap().parse::<f64>().unwrap();
                     }
                     // todo : stroke
                     _ => {
@@ -611,8 +797,74 @@ impl Parser {
                     }
                 }
             }
-            //
             pin
+        };
+        let p_rect = |obj: &Sexp| -> Rect {
+            let mut rect = Rect::blank();
+
+            for obj in obj.list().unwrap() {
+                let name = get_name(obj);
+                match name {
+                    "start" | "end" => {
+                        if obj.is_list() {
+                            let xy = obj.list().unwrap();
+                            let point = Point {
+                                x: xy[1].string().unwrap().parse::<f64>().unwrap(),
+                                y: xy[2].string().unwrap().parse::<f64>().unwrap(),
+                            };
+                            match name {
+                                "start" => {
+                                    rect.points.0 = point;
+                                }
+                                "end" => {
+                                    rect.points.1 = point;
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                    "uuid" => {
+                        rect.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
+                    }
+                    // todo : stroke
+                    _ => {
+                        //println!("{:?}", name);
+                    }
+                }
+            }
+            rect
+        };
+        let p_circ = |obj: &Sexp| -> Circ {
+            let mut circ = Circ::blank();
+
+            for obj in obj.list().unwrap() {
+                let name = get_name(obj);
+                match name {
+                    "center" => {
+                        if obj.is_list() {
+                            let xy = obj.list().unwrap();
+                            let point = Point {
+                                x: xy[1].string().unwrap().parse::<f64>().unwrap(),
+                                y: xy[2].string().unwrap().parse::<f64>().unwrap(),
+                            };
+                            circ.point = point;
+                        }
+                    }
+                    "radius" => {
+                        if obj.is_list() {
+                            circ.radius = obj.list().unwrap()[1].string().unwrap().parse::<f64>().unwrap();
+                        }
+                    }
+                    "uuid" => {
+                        circ.uuid = obj.list().unwrap()[1].string().unwrap().clone();
+                    }
+                    // todo : stroke
+                    _ => {
+                        //println!("{:?}", name);
+                    }
+                }
+            }
+            circ
         };
         let p_text = |obj: &Sexp| -> Text {
             let mut text = Text::blank();
@@ -753,8 +1005,15 @@ impl Parser {
                         symb.arcs.push(p_arc(obj));
                     }
                     (true, "pin") => {
-                        symb.arcs.push(p_arc(obj));
+                        symb.pins.push(p_pin(obj));
                     }
+                    (true, "rectangle") => {
+                        symb.rects.push(p_rect(obj));
+                    }
+                    (true, "circle") => {
+                        symb.circs.push(p_circ(obj));
+                    }
+                    
                     // todo : (power)
                     // todo : pin_names
                     // todo : offset
@@ -769,8 +1028,67 @@ impl Parser {
             //
             symb
         };
-        let p_symb_inst = | obj : &Sexp | -> SymbolInst {
+        let p_symb_inst = |obj: &Sexp| -> SymbolInst {
             let mut symb = SymbolInst::blank();
+            //
+            for obj in obj.list().unwrap() {
+                let name = get_name(obj);
+                match (obj.is_list(), name) {
+                    (true, "lib_id") => {
+                        symb.id = obj.list().unwrap()[1].string().unwrap().clone();
+                    }
+                    (true, "property") => {
+                        let props = obj.list().unwrap();
+                        let mut prop = Property::blank();
+                        //
+                        prop.key = props[1].string().unwrap().clone();
+                        prop.value = props[2].string().unwrap().clone();
+                        prop.id = props[3].list().unwrap()[1]
+                            .string()
+                            .unwrap()
+                            .parse::<i32>()
+                            .unwrap();
+                        if props[4].is_list() {
+                            let at = props[4].list().unwrap();
+                            if at[0].string().unwrap().as_str() != "at" {
+                                break;
+                            }
+                            prop.pos.x = at[1].string().unwrap().parse::<f64>().unwrap();
+                            prop.pos.y = at[2].string().unwrap().parse::<f64>().unwrap();
+                            prop.pos.angle = at[3].string().unwrap().parse::<f64>().unwrap();
+                        }
+                        // todo : effect
+                        // todo : "at" parser
+                        // todo : point => pos
+                        symb.props.push(prop);
+                    }
+                    (true, "uuid") => {
+                        symb.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
+                    }
+                    (true, "at") => {
+                        if !obj.is_list() {
+                            continue;
+                        }
+                        let xya = obj.list().unwrap();
+                        symb.pos.x = xya[1].string().unwrap().parse::<f64>().unwrap();
+                        symb.pos.y = xya[2].string().unwrap().parse::<f64>().unwrap();
+                        symb.pos.angle = xya[3].string().unwrap().parse::<f64>().unwrap();
+                    }
+                    // todo : (power)
+                    // todo : pin_names
+                    // todo : offset
+                    // todo : in_bom
+                    // todo : on_board
+                    _ => {
+                        //println!("{:?}", name);
+                    }
+                }
+            }
+            //
+            symb
+        };
+        let p_symb_temp = |obj: &Sexp| -> SymbolTemp {
+            let mut symb = SymbolTemp::blank();
             //
             for obj in obj.list().unwrap() {
                 let name = get_name(obj);
@@ -779,15 +1097,21 @@ impl Parser {
                         symb.id = obj.string().unwrap().clone();
                     }
                     (true, "property") => {
-                        let props =  obj.list().unwrap();
+                        let props = obj.list().unwrap();
                         let mut prop = Property::blank();
                         //
                         prop.key = props[1].string().unwrap().clone();
                         prop.value = props[2].string().unwrap().clone();
-                        prop.id = props[3].list().unwrap()[1].string().unwrap().parse::<i32>().unwrap();
-                        if props[4].is_list(){
+                        prop.id = props[3].list().unwrap()[1]
+                            .string()
+                            .unwrap()
+                            .parse::<i32>()
+                            .unwrap();
+                        if props[4].is_list() {
                             let at = props[4].list().unwrap();
-                            if at[0].string().unwrap().as_str() != "at" {break;}
+                            if at[0].string().unwrap().as_str() != "at" {
+                                break;
+                            }
                             prop.pos.x = at[1].string().unwrap().parse::<f64>().unwrap();
                             prop.pos.y = at[2].string().unwrap().parse::<f64>().unwrap();
                             prop.pos.angle = at[3].string().unwrap().parse::<f64>().unwrap();
@@ -798,7 +1122,7 @@ impl Parser {
                         symb.props.push(prop);
                     }
                     (true, "symbol") => {
-                       symb.symb = p_symb(obj);
+                        symb.symbs.push(p_symb(obj));
                     }
                     (true, "uuid") => {
                         symb.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
@@ -827,8 +1151,11 @@ impl Parser {
                     for obj in obj.list().unwrap() {
                         let name = get_name(obj);
                         match (obj.is_list(), name) {
-                        (true, "symbol") => {schem.lib.push(p_symb_inst(obj))}
-                        _ => {}
+                            (true, "symbol") => {
+                                let symb = p_symb_temp(obj);
+                                schem.lib.insert(symb.id.clone(), symb);
+                            }
+                            _ => {}
                         }
                     }
                 }
@@ -838,6 +1165,12 @@ impl Parser {
                 (true, "polyline") => schem.polys.push(p_poly(obj)),
                 (true, "no_connect") => schem.nocons.push(p_nconn(obj)), // todo : fix naming
                 (true, "hierarchical_label") => schem.labels.push(p_label(obj)),
+                (true, "symbol") => {
+                    let mut symb = p_symb_inst(obj);
+                    console_log!("{}", symb.id);
+                    symb.parent = Some(schem.lib.get(&symb.id).unwrap().clone());
+                    schem.symbs.push(symb);
+                }
                 _ => {}
             }
         }
@@ -854,7 +1187,7 @@ pub struct Schematic {
     pub polys: Vec<Polyline>,
     pub nocons: Vec<Noconnect>,
     pub labels: Vec<Label>,
-    pub lib: Vec<SymbolInst>,
+    pub lib: HashMap<String, SymbolTemp>,
     pub symbs: Vec<SymbolInst>,
 
     //
@@ -870,7 +1203,7 @@ impl Schematic {
             polys: Vec::<Polyline>::new(),
             nocons: Vec::<Noconnect>::new(),
             labels: Vec::<Label>::new(),
-            lib: Vec::<SymbolInst>::new(),
+            lib: HashMap::<String, SymbolTemp>::new(),
             symbs: Vec::<SymbolInst>::new(),
             version: 0i32,
         }
@@ -878,7 +1211,6 @@ impl Schematic {
 
     pub fn new(file: &str) -> Schematic {
         let schem_obj = symbolic_expressions::parser::parse_str(file).unwrap();
-
         Parser::schematic(&schem_obj)
     }
 
@@ -903,7 +1235,10 @@ impl Schematic {
         for label in &self.labels {
             label.draw(context, pos, scale);
         }
-        self.lib[1].draw(context, pos, scale);
+        for symb in &self.symbs {
+            symb.draw(context, pos, scale);
+        }
+        //self.lib[1].draw(context, pos, scale);
         context.stroke();
     }
 }
