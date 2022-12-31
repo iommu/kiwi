@@ -34,16 +34,18 @@ macro_rules! console_log {
 pub struct Pos {
     pub x: f64,
     pub y: f64,
-    pub angle: f64,
+    pub a: f64,
 }
 
-#[derive(Debug, Clone)]
-pub struct Point {
-    pub x: f64,
-    pub y: f64,
+impl Pos {
+    fn blank() -> Pos {
+        Pos {
+            x: 0.0,
+            y: 0.0,
+            a: 0.0,
+        }
+    }
 }
-
-type Points = Vec<Point>;
 
 #[derive(Debug, Clone)]
 pub struct Stroke {
@@ -56,7 +58,7 @@ type UUID = String; // todo : real uuid obj
 
 #[derive(Debug, Clone)]
 pub struct Wire {
-    pub points: Points,
+    pub poss: Vec<Pos>,
     pub stroke: Stroke,
     pub uuid: UUID,
 }
@@ -64,7 +66,7 @@ pub struct Wire {
 impl Wire {
     fn blank() -> Wire {
         Wire {
-            points: Vec::<Point>::new(),
+            poss: Vec::<Pos>::new(),
             stroke: Stroke {
                 width: 1.0,
                 s_type: 1,
@@ -75,12 +77,12 @@ impl Wire {
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
-        // draw point to point using stroke
+        // draw pos to pos using stroke
         context.move_to(
-            (self.points[0].x) * scale + pos.0,
-            (self.points[0].y) * scale + pos.1,
+            (self.poss[0].x) * scale + pos.0,
+            (self.poss[0].y) * scale + pos.1,
         );
-        for point in &self.points {
+        for point in &self.poss {
             context.line_to((point.x) * scale + pos.0, (point.y) * scale + pos.1);
         }
     }
@@ -88,7 +90,7 @@ impl Wire {
 
 #[derive(Debug, Clone)]
 pub struct Rect {
-    pub points: (Point, Point),
+    pub poss: (Pos, Pos),
     pub stroke: Stroke,
     pub fill: u8,
     pub uuid: UUID,
@@ -97,7 +99,18 @@ pub struct Rect {
 impl Rect {
     fn blank() -> Rect {
         Rect {
-            points: (Point { x: 0.0, y: 0.0 }, Point { x: 0.0, y: 0.0 }),
+            poss: (
+                Pos {
+                    x: 0.0,
+                    y: 0.0,
+                    a: 0.0,
+                },
+                Pos {
+                    x: 0.0,
+                    y: 0.0,
+                    a: 0.0,
+                },
+            ),
             stroke: Stroke {
                 width: 1.0,
                 s_type: 1,
@@ -111,39 +124,38 @@ impl Rect {
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
         console_log!(
             "drawing symb rect {}:{}, {}:{}, pos : {}:{}",
-            self.points.0.x,
-            self.points.0.y,
-            self.points.1.x,
-            self.points.1.y,
+            self.poss.0.x,
+            self.poss.0.y,
+            self.poss.1.x,
+            self.poss.1.y,
             pos.0,
             pos.1
         );
         console_log!(
             "{}:{}, {}:{}",
-            (self.points.0.x) * scale + pos.0,
-            (self.points.0.y) * scale + pos.1,
-            (self.points.1.x - self.points.0.x) * scale,
-            (self.points.1.y - self.points.0.y) * scale
+            (self.poss.0.x) * scale + pos.0,
+            (self.poss.0.y) * scale + pos.1,
+            (self.poss.1.x - self.poss.0.x) * scale,
+            (self.poss.1.y - self.poss.0.y) * scale
         );
 
-        // draw point to point using stroke
+        // draw pos to pos using stroke
         context.move_to(
-            (self.points.0.x) * scale + pos.0,
-            (self.points.0.y) * scale + pos.1,
+            (self.poss.0.x) * scale + pos.0,
+            (self.poss.0.y) * scale + pos.1,
         );
         context.rect(
-            pos.0 +(self.points.0.x) * scale ,
-            pos.1 +(self.points.0.y) * scale ,
-            (self.points.1.x - self.points.0.x) * scale,
-            -(self.points.1.y + self.points.0.y) * scale, //todo : why?
-            
+            pos.0 + (self.poss.0.x) * scale,
+            pos.1 + (self.poss.0.y) * scale,
+            (self.poss.1.x - self.poss.0.x) * scale,
+            -(self.poss.1.y + self.poss.0.y) * scale, //todo : why?
         );
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Circ {
-    pub point: Point,
+    pub pos: Pos,
     pub radius: f64,
     pub stroke: Stroke,
     pub fill: u8,
@@ -153,7 +165,11 @@ pub struct Circ {
 impl Circ {
     fn blank() -> Circ {
         Circ {
-            point: Point { x: 0.0, y: 0.0 },
+            pos: Pos {
+                x: 0.0,
+                y: 0.0,
+                a: 0.0,
+            },
             radius: 0.0,
             stroke: Stroke {
                 width: 1.0,
@@ -167,26 +183,24 @@ impl Circ {
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
         console_log!("DRAWING CIRC");
-        // draw point to point using stroke
+        // draw pos to pos using stroke
         context.move_to(
-            (self.point.x) * scale + pos.0 + (self.radius*scale),
-            (self.point.y) * scale + pos.1 + (self.radius*scale),
+            (self.pos.x) * scale + pos.0 + (self.radius * scale),
+            (self.pos.y) * scale + pos.1 + (self.radius * scale),
         );
         context.arc(
-            (self.point.x) * scale + pos.0,
-            (self.point.y) * scale + pos.1,
+            (self.pos.x) * scale + pos.0,
+            (self.pos.y) * scale + pos.1,
             (self.radius) * scale,
             0.0,
             f64::consts::PI * 2.0,
         );
-
-        
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Junction {
-    pub point: Point,
+    pub pos: Pos,
     pub diameter: f64,
     pub color: (u8, u8, u8, u8),
     pub uuid: UUID,
@@ -195,7 +209,11 @@ pub struct Junction {
 impl Junction {
     fn blank() -> Junction {
         Junction {
-            point: Point { x: 0.0, y: 0.0 },
+            pos: Pos {
+                x: 0.0,
+                y: 0.0,
+                a: 0.0,
+            },
             diameter: 1.0,
             color: (0, 0, 0, 0),
             uuid: "".to_string(),
@@ -203,14 +221,11 @@ impl Junction {
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
-        // todo : move point based on diam
-        context.move_to(
-            (self.point.x) * scale + pos.0,
-            (self.point.y) * scale + pos.1,
-        );
+        // todo : move pos based on diam
+        context.move_to((self.pos.x) * scale + pos.0, (self.pos.y) * scale + pos.1);
         context.arc(
-            (self.point.x) * scale + pos.0,
-            (self.point.y) * scale + pos.1,
+            (self.pos.x) * scale + pos.0,
+            (self.pos.y) * scale + pos.1,
             ((self.diameter + 0.2) * 1.0) * scale,
             0.0,
             f64::consts::PI * 2.0,
@@ -221,7 +236,7 @@ impl Junction {
 #[derive(Debug, Clone)]
 pub struct Text {
     pub text: String,
-    pub point: Point,
+    pub pos: Pos,
     // todo : effect
     pub uuid: UUID,
 }
@@ -230,43 +245,39 @@ impl Text {
     fn blank() -> Text {
         Text {
             text: "".to_string(),
-            point: Point { x: 0.0, y: 0.0 },
+            pos: Pos {
+                x: 0.0,
+                y: 0.0,
+                a: 0.0,
+            },
             uuid: "".to_string(),
         }
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
-        // todo : move point based on diam
-        context.move_to(
-            (self.point.x) * scale + pos.0,
-            (self.point.y) * scale + pos.1,
-        );
+        // todo : move pos based on diam
+        context.move_to((self.pos.x) * scale + pos.0, (self.pos.y) * scale + pos.1);
         context.set_font(format!("{}px monospace", (2.0 * scale) as i32).as_str());
         context.fill_text(
             self.text.as_str(),
-            (self.point.x) * scale + pos.0,
-            (self.point.y) * scale + pos.1,
+            (self.pos.x) * scale + pos.0,
+            (self.pos.y) * scale + pos.1,
         );
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Effect {
-
-}
+pub struct Effect {}
 
 impl Effect {
     fn blank() -> Effect {
-        Effect {
-
-        }
+        Effect {}
     }
-
 }
 
 #[derive(Debug, Clone)]
 pub struct Polyline {
-    pub points: Points,
+    pub poss: Vec<Pos>,
     pub stroke: Stroke,
     pub uuid: UUID,
 }
@@ -274,7 +285,7 @@ pub struct Polyline {
 impl Polyline {
     fn blank() -> Polyline {
         Polyline {
-            points: Vec::<Point>::new(),
+            poss: Vec::<Pos>::new(),
             stroke: Stroke {
                 width: 1.0,
                 s_type: 1,
@@ -285,13 +296,17 @@ impl Polyline {
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
-        // draw point to point using stroke
+        // draw pos to pos using stroke
         context.move_to(
-            (self.points[0].x) * scale + pos.0,
-            (self.points[0].y) * scale + pos.1,
+            (self.poss[0].x) * scale + pos.0,
+            (self.poss[0].y) * scale + pos.1,
         );
-        for point in &self.points {
-            console_log!("drawing line : {}:{}", (point.x) * scale + pos.0, (point.y) * scale + pos.1);
+        for point in &self.poss {
+            console_log!(
+                "drawing line : {}:{}",
+                (point.x) * scale + pos.0,
+                (point.y) * scale + pos.1
+            );
             context.line_to((point.x) * scale + pos.0, (point.y) * scale + pos.1);
         }
     }
@@ -299,7 +314,7 @@ impl Polyline {
 
 #[derive(Debug, Clone)]
 pub struct Arc {
-    pub points: (Point, Point, Point), /* start, mid, end*/
+    pub poss: (Pos, Pos, Pos), /* start, mid, end*/
     pub stroke: Stroke,
     pub fill: bool,
     pub uuid: UUID,
@@ -308,10 +323,22 @@ pub struct Arc {
 impl Arc {
     fn blank() -> Arc {
         Arc {
-            points: (
-                Point { x: 0.0, y: 0.0 },
-                Point { x: 0.0, y: 0.0 },
-                Point { x: 0.0, y: 0.0 },
+            poss: (
+                Pos {
+                    x: 0.0,
+                    y: 0.0,
+                    a: 0.0,
+                },
+                Pos {
+                    x: 0.0,
+                    y: 0.0,
+                    a: 0.0,
+                },
+                Pos {
+                    x: 0.0,
+                    y: 0.0,
+                    a: 0.0,
+                },
             ),
             stroke: Stroke {
                 width: 1.0,
@@ -324,28 +351,22 @@ impl Arc {
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
-        // draw point to point using stroke
+        // draw pos to pos using stroke
 
         // triiggg
         let radius = f64::sqrt(
-            f64::powf(self.points.0.x - self.points.1.x, 2.0)
-                + f64::powf(self.points.0.y - self.points.1.y, 2.0),
+            f64::powf(self.poss.0.x - self.poss.1.x, 2.0)
+                + f64::powf(self.poss.0.y - self.poss.1.y, 2.0),
         );
-        let angle_start = f64::atan2(
-            self.points.0.y - self.points.1.y,
-            self.points.0.x - self.points.1.x,
-        );
-        let angle_stop = f64::atan2(
-            self.points.2.y - self.points.1.y,
-            self.points.2.x - self.points.1.x,
-        );
+        let angle_start = f64::atan2(self.poss.0.y - self.poss.1.y, self.poss.0.x - self.poss.1.x);
+        let angle_stop = f64::atan2(self.poss.2.y - self.poss.1.y, self.poss.2.x - self.poss.1.x);
         context.move_to(
-            (self.points.0.x) * scale + pos.0,
-            (self.points.0.y) * scale + pos.1,
+            (self.poss.0.x) * scale + pos.0,
+            (self.poss.0.y) * scale + pos.1,
         );
         context.arc(
-            (self.points.1.x) * scale + pos.0,
-            (self.points.1.y) * scale + pos.1,
+            (self.poss.1.x) * scale + pos.0,
+            (self.poss.1.y) * scale + pos.1,
             radius * scale,
             angle_start,
             angle_stop,
@@ -355,14 +376,18 @@ impl Arc {
 
 #[derive(Debug, Clone)]
 pub struct Noconnect {
-    pub point: Point,
+    pub pos: Pos,
     pub uuid: UUID,
 }
 
 impl Noconnect {
     fn blank() -> Noconnect {
         Noconnect {
-            point: Point { x: 0.0, y: 0.0 },
+            pos: Pos {
+                x: 0.0,
+                y: 0.0,
+                a: 0.0,
+            },
             uuid: "".to_string(),
         }
     }
@@ -371,20 +396,20 @@ impl Noconnect {
         // draws an "x"
         let size = 1.0;
         context.move_to(
-            (self.point.x - size) * scale + pos.0,
-            (self.point.y - size) * scale + pos.1,
+            (self.pos.x - size) * scale + pos.0,
+            (self.pos.y - size) * scale + pos.1,
         );
         context.line_to(
-            (self.point.x + size) * scale + pos.0,
-            (self.point.y + size) * scale + pos.1,
+            (self.pos.x + size) * scale + pos.0,
+            (self.pos.y + size) * scale + pos.1,
         );
         context.move_to(
-            (self.point.x - size) * scale + pos.0,
-            (self.point.y + size) * scale + pos.1,
+            (self.pos.x - size) * scale + pos.0,
+            (self.pos.y + size) * scale + pos.1,
         );
         context.line_to(
-            (self.point.x + size) * scale + pos.0,
-            (self.point.y - size) * scale + pos.1,
+            (self.pos.x + size) * scale + pos.0,
+            (self.pos.y - size) * scale + pos.1,
         );
     }
 }
@@ -404,11 +429,7 @@ impl Property {
             key: "".to_string(),
             value: "".to_string(),
             id: 0,
-            pos: Pos {
-                x: 0.0,
-                y: 0.0,
-                angle: 0.0,
-            },
+            pos: Pos::blank(),
         }
     }
 }
@@ -426,11 +447,7 @@ pub struct Pin {
 impl Pin {
     fn blank() -> Pin {
         Pin {
-            pos: Pos {
-                x: 0.0,
-                y: 0.0,
-                angle: 0.0,
-            },
+            pos: Pos::blank(),
             len: 0.0,
             name: ("".to_string(), Effect::blank()),
             numb: (0i32, Effect::blank()),
@@ -438,19 +455,19 @@ impl Pin {
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
-        let angle = self.pos.angle/180.0*f64::consts::PI;
-        let len = (angle.cos()*self.len, angle.sin()*self.len);
+        let angle = self.pos.a / 180.0 * f64::consts::PI;
+        let len = (angle.cos() * self.len, angle.sin() * self.len);
         console_log!("angle : {}", angle);
 
         console_log!("pin : {}:{}", angle.cos(), angle.sin());
         console_log!("pin : {}:{}", len.0, len.1);
         context.move_to(
-            (self.pos.x- len.0/2.0) * scale + pos.0,
-            (self.pos.y - len.1/2.0 ) * scale + pos.1,
+            (self.pos.x - len.0 / 2.0) * scale + pos.0,
+            (self.pos.y - len.1 / 2.0) * scale + pos.1,
         );
         context.line_to(
-            (self.pos.x + len.0/2.0) * scale + pos.0,
-            (self.pos.y + len.1/2.0) * scale + pos.1,
+            (self.pos.x + len.0 / 2.0) * scale + pos.0,
+            (self.pos.y + len.1 / 2.0) * scale + pos.1,
         );
     }
 }
@@ -501,7 +518,7 @@ impl Symbol {
 pub struct SymbolTemp {
     pub id: String,
     pub props: Vec<Property>,
-    pub point: Point,
+    pub pos: Pos,
     pub symbs: Vec<Symbol>,
     pub uuid: UUID,
 }
@@ -511,7 +528,7 @@ impl SymbolTemp {
         SymbolTemp {
             id: "".to_string(),
             props: Vec::<Property>::new(),
-            point: Point { x: 0.0, y: 0.0 },
+            pos: Pos::blank(),
             symbs: Vec::<Symbol>::new(),
             uuid: "".to_string(),
         }
@@ -520,22 +537,21 @@ impl SymbolTemp {
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
         for symb in &self.symbs {
             symb.draw(context, pos, scale)
-
         }
         // // draws an "x"
         // let size = 1.0;
         // context.move_to(
-        //     ( self.point.x - size) * scale + pos.0,
-        //     (self.point.y - size) * scale + pos.1,
+        //     ( self.pos.x - size) * scale + pos.0,
+        //     (self.pos.y - size) * scale + pos.1,
         // );
-        // context.line_to(( self.point.x + size) * scale + pos.0,
-        // (self.point.y + size) * scale + pos.1);
+        // context.line_to(( self.pos.x + size) * scale + pos.0,
+        // (self.pos.y + size) * scale + pos.1);
         // context.move_to(
-        //     ( self.point.x - size) * scale + pos.0,
-        //     (self.point.y + size) * scale + pos.1,
+        //     ( self.pos.x - size) * scale + pos.0,
+        //     (self.pos.y + size) * scale + pos.1,
         // );
-        // context.line_to(( self.point.x + size) * scale + pos.0,
-        // (self.point.y - size) * scale + pos.1);
+        // context.line_to(( self.pos.x + size) * scale + pos.0,
+        // (self.pos.y - size) * scale + pos.1);
     }
 }
 
@@ -554,11 +570,7 @@ impl SymbolInst {
             id: "".to_string(),
             parent: None,
             props: Vec::<Property>::new(),
-            pos: Pos {
-                x: 0.0,
-                y: 0.0,
-                angle: 0.0,
-            },
+            pos: Pos::blank(),
             uuid: "".to_string(),
         }
     }
@@ -590,11 +602,7 @@ impl Label {
         Label {
             id: "".to_string(),
             shape: 0,
-            pos: Pos {
-                x: 0.0,
-                y: 0.0,
-                angle: 0.0,
-            },
+            pos: Pos::blank(),
             uuid: "".to_string(),
         }
     }
@@ -607,7 +615,7 @@ impl Label {
         }
         let size = 1.0;
 
-        // let points = [
+        // let poss = [
 
         // ];
 
@@ -679,8 +687,8 @@ impl Parser {
                             continue;
                         }
                         let xy = obj.list().unwrap();
-                        junction.point.x = xy[1].string().unwrap().parse::<f64>().unwrap();
-                        junction.point.y = xy[2].string().unwrap().parse::<f64>().unwrap();
+                        junction.pos.x = xy[1].string().unwrap().parse::<f64>().unwrap();
+                        junction.pos.y = xy[2].string().unwrap().parse::<f64>().unwrap();
                     }
                     (true, "diameter") => {
                         junction.diameter = obj.list().unwrap()[1]
@@ -714,9 +722,10 @@ impl Parser {
                                 continue;
                             }
                             let xy = xy.list().unwrap();
-                            poly.points.push(Point {
+                            poly.poss.push(Pos {
                                 x: xy[1].string().unwrap().parse::<f64>().unwrap(),
                                 y: xy[2].string().unwrap().parse::<f64>().unwrap(),
+                                a: 0.0,
                             });
                         }
                     }
@@ -741,19 +750,20 @@ impl Parser {
                     "start" | "mid" | "end" => {
                         if obj.is_list() {
                             let xy = obj.list().unwrap();
-                            let point = Point {
+                            let pos = Pos {
                                 x: xy[1].string().unwrap().parse::<f64>().unwrap(),
                                 y: xy[2].string().unwrap().parse::<f64>().unwrap(),
+                                a: 0.0,
                             };
                             match name {
                                 "start" => {
-                                    arc.points.0 = point;
+                                    arc.poss.0 = pos;
                                 }
                                 "mid" => {
-                                    arc.points.1 = point;
+                                    arc.poss.1 = pos;
                                 }
                                 "end" => {
-                                    arc.points.2 = point;
+                                    arc.poss.2 = pos;
                                 }
                                 _ => {}
                             }
@@ -782,7 +792,7 @@ impl Parser {
                         let xy = obj.list().unwrap();
                         pin.pos.x = xy[1].string().unwrap().parse::<f64>().unwrap();
                         pin.pos.y = xy[2].string().unwrap().parse::<f64>().unwrap();
-                        pin.pos.angle = xy[3].string().unwrap().parse::<f64>().unwrap();
+                        pin.pos.a = xy[3].string().unwrap().parse::<f64>().unwrap();
                     }
                     (true, "length") => {
                         if !obj.is_list() {
@@ -808,16 +818,17 @@ impl Parser {
                     "start" | "end" => {
                         if obj.is_list() {
                             let xy = obj.list().unwrap();
-                            let point = Point {
+                            let pos = Pos {
                                 x: xy[1].string().unwrap().parse::<f64>().unwrap(),
                                 y: xy[2].string().unwrap().parse::<f64>().unwrap(),
+                                a: 0.0,
                             };
                             match name {
                                 "start" => {
-                                    rect.points.0 = point;
+                                    rect.poss.0 = pos;
                                 }
                                 "end" => {
-                                    rect.points.1 = point;
+                                    rect.poss.1 = pos;
                                 }
                                 _ => {}
                             }
@@ -843,16 +854,21 @@ impl Parser {
                     "center" => {
                         if obj.is_list() {
                             let xy = obj.list().unwrap();
-                            let point = Point {
+                            let pos = Pos {
                                 x: xy[1].string().unwrap().parse::<f64>().unwrap(),
                                 y: xy[2].string().unwrap().parse::<f64>().unwrap(),
+                                a: 0.0,
                             };
-                            circ.point = point;
+                            circ.pos = pos;
                         }
                     }
                     "radius" => {
                         if obj.is_list() {
-                            circ.radius = obj.list().unwrap()[1].string().unwrap().parse::<f64>().unwrap();
+                            circ.radius = obj.list().unwrap()[1]
+                                .string()
+                                .unwrap()
+                                .parse::<f64>()
+                                .unwrap();
                         }
                     }
                     "uuid" => {
@@ -877,8 +893,8 @@ impl Parser {
                             continue;
                         }
                         let xy = obj.list().unwrap();
-                        text.point.x = xy[1].string().unwrap().parse::<f64>().unwrap();
-                        text.point.y = xy[2].string().unwrap().parse::<f64>().unwrap();
+                        text.pos.x = xy[1].string().unwrap().parse::<f64>().unwrap();
+                        text.pos.y = xy[2].string().unwrap().parse::<f64>().unwrap();
                     }
                     // todo color
                     (true, "uuid") => {
@@ -906,9 +922,10 @@ impl Parser {
                                 continue;
                             }
                             let xy = xy.list().unwrap();
-                            wire.points.push(Point {
+                            wire.poss.push(Pos {
                                 x: xy[1].string().unwrap().parse::<f64>().unwrap(),
                                 y: xy[2].string().unwrap().parse::<f64>().unwrap(),
+                                a: 0.0,
                             });
                         }
                     }
@@ -935,8 +952,8 @@ impl Parser {
                             continue;
                         }
                         let xy = obj.list().unwrap();
-                        nconn.point.x = xy[1].string().unwrap().parse::<f64>().unwrap();
-                        nconn.point.y = xy[2].string().unwrap().parse::<f64>().unwrap();
+                        nconn.pos.x = xy[1].string().unwrap().parse::<f64>().unwrap();
+                        nconn.pos.y = xy[2].string().unwrap().parse::<f64>().unwrap();
                     }
                     // todo color
                     (true, "uuid") => {
@@ -975,7 +992,7 @@ impl Parser {
                         let xya = obj.list().unwrap();
                         label.pos.x = xya[1].string().unwrap().parse::<f64>().unwrap();
                         label.pos.y = xya[2].string().unwrap().parse::<f64>().unwrap();
-                        label.pos.angle = xya[3].string().unwrap().parse::<f64>().unwrap();
+                        label.pos.a = xya[3].string().unwrap().parse::<f64>().unwrap();
                     }
                     (true, "uuid") => {
                         label.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
@@ -1013,7 +1030,7 @@ impl Parser {
                     (true, "circle") => {
                         symb.circs.push(p_circ(obj));
                     }
-                    
+
                     // todo : (power)
                     // todo : pin_names
                     // todo : offset
@@ -1055,11 +1072,11 @@ impl Parser {
                             }
                             prop.pos.x = at[1].string().unwrap().parse::<f64>().unwrap();
                             prop.pos.y = at[2].string().unwrap().parse::<f64>().unwrap();
-                            prop.pos.angle = at[3].string().unwrap().parse::<f64>().unwrap();
+                            prop.pos.a = at[3].string().unwrap().parse::<f64>().unwrap();
                         }
                         // todo : effect
                         // todo : "at" parser
-                        // todo : point => pos
+                        // todo : pos => pos
                         symb.props.push(prop);
                     }
                     (true, "uuid") => {
@@ -1072,7 +1089,7 @@ impl Parser {
                         let xya = obj.list().unwrap();
                         symb.pos.x = xya[1].string().unwrap().parse::<f64>().unwrap();
                         symb.pos.y = xya[2].string().unwrap().parse::<f64>().unwrap();
-                        symb.pos.angle = xya[3].string().unwrap().parse::<f64>().unwrap();
+                        symb.pos.a = xya[3].string().unwrap().parse::<f64>().unwrap();
                     }
                     // todo : (power)
                     // todo : pin_names
@@ -1114,11 +1131,11 @@ impl Parser {
                             }
                             prop.pos.x = at[1].string().unwrap().parse::<f64>().unwrap();
                             prop.pos.y = at[2].string().unwrap().parse::<f64>().unwrap();
-                            prop.pos.angle = at[3].string().unwrap().parse::<f64>().unwrap();
+                            prop.pos.a = at[3].string().unwrap().parse::<f64>().unwrap();
                         }
                         // todo : effect
                         // todo : "at" parser
-                        // todo : point => pos
+                        // todo : pos => pos
                         symb.props.push(prop);
                     }
                     (true, "symbol") => {
