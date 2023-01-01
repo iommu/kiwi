@@ -2,6 +2,7 @@ use std::cell::Cell;
 use std::f64;
 use std::rc::Rc;
 use schematic::Schematic;
+use schematic::Point;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 mod schematic;
@@ -51,7 +52,7 @@ pub fn start(file: &str) -> Result<(), JsValue> {
     let scale = Rc::new(Cell::new(2.0f64));
     let delta = Rc::new(Cell::new((0.0f64, 0.0f64)));
     let schematic = Schematic::new(file);
-    schematic.draw(&context, coords.get(), scale.get());
+    schematic.draw(&context, Point { x: coords.get().0, y: coords.get().1, a: 0.0 }, scale.get());
     {
         let context = context.clone();
         let pressed = pressed.clone();
@@ -66,7 +67,7 @@ pub fn start(file: &str) -> Result<(), JsValue> {
                     coords.get().1 + event.offset_y() as f64 - delta.get().1,
                 ));
                 delta.set((event.offset_x() as f64, event.offset_y() as f64));
-                schematic.draw(&context, coords.get(), scale.get());
+                schematic.draw(&context, Point { x: coords.get().0, y: coords.get().1, a: 0.0 }, scale.get());
 
             }
         }) as Box<dyn FnMut(_)>);
@@ -107,7 +108,7 @@ pub fn start(file: &str) -> Result<(), JsValue> {
         let closure = Closure::wrap(Box::new(move |event: web_sys::WheelEvent| {
             event.prevent_default();
             scale.set(scale.get()+ (event.delta_y() as f64 / 500.0));
-            schematic.draw(&context, coords.get(), scale.get());
+            schematic.draw(&context, Point { x: coords.get().0, y: coords.get().1, a: 0.0 }, scale.get());
         }) as Box<dyn FnMut(_)>);
         canvas.add_event_listener_with_callback("wheel", closure.as_ref().unchecked_ref())?;
         closure.forget();

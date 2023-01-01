@@ -3,6 +3,7 @@ use std::f64;
 use std::fs;
 use symbolic_expressions;
 use symbolic_expressions::Sexp;
+use wasm_bindgen::describe::F64;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
@@ -31,15 +32,15 @@ macro_rules! console_log {
 }
 
 #[derive(Debug, Clone)]
-pub struct Pos {
+pub struct Point {
     pub x: f64,
     pub y: f64,
     pub a: f64,
 }
 
-impl Pos {
-    fn blank() -> Pos {
-        Pos {
+impl Point {
+    pub fn blank() -> Point {
+        Point {
             x: 0.0,
             y: 0.0,
             a: 0.0,
@@ -78,7 +79,7 @@ type UUID = String; // todo : real uuid obj
 
 #[derive(Debug, Clone)]
 pub struct Wire {
-    pub poss: Vec<Pos>,
+    pub poss: Vec<Point>,
     pub stroke: Stroke,
     pub uuid: UUID,
 }
@@ -86,27 +87,27 @@ pub struct Wire {
 impl Wire {
     fn blank() -> Wire {
         Wire {
-            poss: Vec::<Pos>::new(),
+            poss: Vec::<Point>::new(),
             stroke: Stroke::blank(),
             uuid: "".to_string(),
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
         // draw pos to pos using stroke
         context.move_to(
-            (self.poss[0].x) * scale + pos.0,
-            (self.poss[0].y) * scale + pos.1,
+            (self.poss[0].x) * scale + pos.x,
+            (self.poss[0].y) * scale + pos.y,
         );
         for point in &self.poss {
-            context.line_to((point.x) * scale + pos.0, (point.y) * scale + pos.1);
+            context.line_to((point.x) * scale + pos.x, (point.y) * scale + pos.y);
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Rect {
-    pub poss: (Pos, Pos),
+    pub poss: (Point, Point),
     pub stroke: Stroke,
     pub fill: u8,
     pub uuid: UUID,
@@ -116,12 +117,12 @@ impl Rect {
     fn blank() -> Rect {
         Rect {
             poss: (
-                Pos {
+                Point {
                     x: 0.0,
                     y: 0.0,
                     a: 0.0,
                 },
-                Pos {
+                Point {
                     x: 0.0,
                     y: 0.0,
                     a: 0.0,
@@ -133,32 +134,32 @@ impl Rect {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
         console_log!(
             "drawing symb rect {}:{}, {}:{}, pos : {}:{}",
             self.poss.0.x,
             self.poss.0.y,
             self.poss.1.x,
             self.poss.1.y,
-            pos.0,
-            pos.1
+            pos.x,
+            pos.y
         );
         console_log!(
             "{}:{}, {}:{}",
-            (self.poss.0.x) * scale + pos.0,
-            (self.poss.0.y) * scale + pos.1,
+            (self.poss.0.x) * scale + pos.x,
+            (self.poss.0.y) * scale + pos.y,
             (self.poss.1.x - self.poss.0.x) * scale,
             (self.poss.1.y - self.poss.0.y) * scale
         );
 
         // draw pos to pos using stroke
         context.move_to(
-            (self.poss.0.x) * scale + pos.0,
-            (self.poss.0.y) * scale + pos.1,
+            (self.poss.0.x) * scale + pos.x,
+            (self.poss.0.y) * scale + pos.y,
         );
         context.rect(
-            pos.0 + (self.poss.0.x) * scale,
-            pos.1 + (self.poss.0.y) * scale,
+            pos.x + (self.poss.0.x) * scale,
+            pos.y + (self.poss.0.y) * scale,
             (self.poss.1.x - self.poss.0.x) * scale,
             -(self.poss.1.y + self.poss.0.y) * scale, //todo : why?
         );
@@ -167,7 +168,7 @@ impl Rect {
 
 #[derive(Debug, Clone)]
 pub struct Circ {
-    pub pos: Pos,
+    pub pos: Point,
     pub radius: f64,
     pub stroke: Stroke,
     pub fill: u8,
@@ -177,7 +178,7 @@ pub struct Circ {
 impl Circ {
     fn blank() -> Circ {
         Circ {
-            pos: Pos {
+            pos: Point {
                 x: 0.0,
                 y: 0.0,
                 a: 0.0,
@@ -189,16 +190,16 @@ impl Circ {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
         console_log!("DRAWING CIRC");
         // draw pos to pos using stroke
         context.move_to(
-            (self.pos.x) * scale + pos.0 + (self.radius * scale),
-            (self.pos.y) * scale + pos.1 + (self.radius * scale),
+            (self.pos.x) * scale + pos.x + (self.radius * scale),
+            (self.pos.y) * scale + pos.y + (self.radius * scale),
         );
         context.arc(
-            (self.pos.x) * scale + pos.0,
-            (self.pos.y) * scale + pos.1,
+            (self.pos.x) * scale + pos.x,
+            (self.pos.y) * scale + pos.y,
             (self.radius) * scale,
             0.0,
             f64::consts::PI * 2.0,
@@ -208,7 +209,7 @@ impl Circ {
 
 #[derive(Debug, Clone)]
 pub struct Junction {
-    pub pos: Pos,
+    pub pos: Point,
     pub diameter: f64,
     pub color: (u8, u8, u8, u8),
     pub uuid: UUID,
@@ -217,7 +218,7 @@ pub struct Junction {
 impl Junction {
     fn blank() -> Junction {
         Junction {
-            pos: Pos {
+            pos: Point {
                 x: 0.0,
                 y: 0.0,
                 a: 0.0,
@@ -228,12 +229,12 @@ impl Junction {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
         // todo : move pos based on diam
-        context.move_to((self.pos.x) * scale + pos.0, (self.pos.y) * scale + pos.1);
+        context.move_to((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
         context.arc(
-            (self.pos.x) * scale + pos.0,
-            (self.pos.y) * scale + pos.1,
+            (self.pos.x) * scale + pos.x,
+            (self.pos.y) * scale + pos.y,
             ((self.diameter + 0.2) * 1.0) * scale,
             0.0,
             f64::consts::PI * 2.0,
@@ -244,7 +245,7 @@ impl Junction {
 #[derive(Debug, Clone)]
 pub struct Text {
     pub text: String,
-    pub pos: Pos,
+    pub pos: Point,
     // todo : effect
     pub uuid: UUID,
 }
@@ -253,7 +254,7 @@ impl Text {
     fn blank() -> Text {
         Text {
             text: "".to_string(),
-            pos: Pos {
+            pos: Point {
                 x: 0.0,
                 y: 0.0,
                 a: 0.0,
@@ -262,14 +263,14 @@ impl Text {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
         // todo : move pos based on diam
-        context.move_to((self.pos.x) * scale + pos.0, (self.pos.y) * scale + pos.1);
+        context.move_to((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
         context.set_font(format!("{}px monospace", (2.0 * scale) as i32).as_str());
         context.fill_text(
             self.text.as_str(),
-            (self.pos.x) * scale + pos.0,
-            (self.pos.y) * scale + pos.1,
+            (self.pos.x) * scale + pos.x,
+            (self.pos.y) * scale + pos.y,
         );
     }
 }
@@ -285,7 +286,7 @@ impl Effect {
 
 #[derive(Debug, Clone)]
 pub struct Polyline {
-    pub poss: Vec<Pos>,
+    pub poss: Vec<Point>,
     pub stroke: Stroke,
     pub uuid: UUID,
 }
@@ -293,34 +294,37 @@ pub struct Polyline {
 impl Polyline {
     fn blank() -> Polyline {
         Polyline {
-            poss: Vec::<Pos>::new(),
+            poss: Vec::<Point>::new(),
             stroke: Stroke::blank(),
             uuid: "".to_string(),
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
         // draw pos to pos using stroke
         context.move_to(
-            (self.poss[0].x) * scale + pos.0,
-            (self.poss[0].y) * scale + pos.1,
+            (self.poss[0].x) * scale + pos.x,
+            (self.poss[0].y) * scale + pos.y,
         );
         for point in &self.poss {
             console_log!(
                 "drawing line : {}:{}",
-                (point.x) * scale + pos.0,
-                (point.y) * scale + pos.1
+                (point.x) * scale + pos.x,
+                (point.y) * scale + pos.y
             );
             context.set_line_dash(&JsValue::from(""));
-            context.set_stroke_style(&JsValue::from(format!("rgba({}, {}, {}, {})", self.stroke.color.0, self.stroke.color.0, self.stroke.color.2, 255)));
-            context.line_to((point.x) * scale + pos.0, (point.y) * scale + pos.1);
+            context.set_stroke_style(&JsValue::from(format!(
+                "rgba({}, {}, {}, {})",
+                self.stroke.color.0, self.stroke.color.0, self.stroke.color.2, 255
+            )));
+            context.line_to((point.x) * scale + pos.x, (point.y) * scale + pos.y);
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Arc {
-    pub poss: (Pos, Pos, Pos), /* start, mid, end*/
+    pub poss: (Point, Point, Point), /* start, mid, end*/
     pub stroke: Stroke,
     pub fill: bool,
     pub uuid: UUID,
@@ -329,14 +333,14 @@ pub struct Arc {
 impl Arc {
     fn blank() -> Arc {
         Arc {
-            poss: (Pos::blank(), Pos::blank(), Pos::blank()),
+            poss: (Point::blank(), Point::blank(), Point::blank()),
             stroke: Stroke::blank(),
             fill: false,
             uuid: "".to_string(),
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
         // draw pos to pos using stroke
 
         // triiggg
@@ -347,12 +351,12 @@ impl Arc {
         let angle_start = f64::atan2(self.poss.0.y - self.poss.1.y, self.poss.0.x - self.poss.1.x);
         let angle_stop = f64::atan2(self.poss.2.y - self.poss.1.y, self.poss.2.x - self.poss.1.x);
         context.move_to(
-            (self.poss.0.x) * scale + pos.0,
-            (self.poss.0.y) * scale + pos.1,
+            (self.poss.0.x) * scale + pos.x,
+            (self.poss.0.y) * scale + pos.y,
         );
         context.arc(
-            (self.poss.1.x) * scale + pos.0,
-            (self.poss.1.y) * scale + pos.1,
+            (self.poss.1.x) * scale + pos.x,
+            (self.poss.1.y) * scale + pos.y,
             radius * scale,
             angle_start,
             angle_stop,
@@ -362,14 +366,14 @@ impl Arc {
 
 #[derive(Debug, Clone)]
 pub struct Noconnect {
-    pub pos: Pos,
+    pub pos: Point,
     pub uuid: UUID,
 }
 
 impl Noconnect {
     fn blank() -> Noconnect {
         Noconnect {
-            pos: Pos {
+            pos: Point {
                 x: 0.0,
                 y: 0.0,
                 a: 0.0,
@@ -378,24 +382,24 @@ impl Noconnect {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
         // draws an "x"
         let size = 1.0;
         context.move_to(
-            (self.pos.x - size) * scale + pos.0,
-            (self.pos.y - size) * scale + pos.1,
+            (self.pos.x - size) * scale + pos.x,
+            (self.pos.y - size) * scale + pos.y,
         );
         context.line_to(
-            (self.pos.x + size) * scale + pos.0,
-            (self.pos.y + size) * scale + pos.1,
+            (self.pos.x + size) * scale + pos.x,
+            (self.pos.y + size) * scale + pos.y,
         );
         context.move_to(
-            (self.pos.x - size) * scale + pos.0,
-            (self.pos.y + size) * scale + pos.1,
+            (self.pos.x - size) * scale + pos.x,
+            (self.pos.y + size) * scale + pos.y,
         );
         context.line_to(
-            (self.pos.x + size) * scale + pos.0,
-            (self.pos.y - size) * scale + pos.1,
+            (self.pos.x + size) * scale + pos.x,
+            (self.pos.y - size) * scale + pos.y,
         );
     }
 }
@@ -405,7 +409,7 @@ pub struct Property {
     pub key: String,
     pub value: String,
     pub id: i32,
-    pub pos: Pos,
+    pub pos: Point,
     // todo : effect
 }
 
@@ -415,7 +419,7 @@ impl Property {
             key: "".to_string(),
             value: "".to_string(),
             id: 0,
-            pos: Pos::blank(),
+            pos: Point::blank(),
         }
     }
 }
@@ -424,7 +428,7 @@ impl Property {
 pub struct Pin {
     // type "passive"
     // type2? "line"
-    pub pos: Pos,
+    pub pos: Point,
     pub len: f64,
     pub name: (String, Effect),
     pub numb: (i32, Effect),
@@ -433,14 +437,14 @@ pub struct Pin {
 impl Pin {
     fn blank() -> Pin {
         Pin {
-            pos: Pos::blank(),
+            pos: Point::blank(),
             len: 0.0,
             name: ("".to_string(), Effect::blank()),
             numb: (0i32, Effect::blank()),
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
         let angle = self.pos.a / 180.0 * f64::consts::PI;
         let len = (angle.cos() * self.len, angle.sin() * self.len);
         console_log!("angle : {}", angle);
@@ -448,12 +452,12 @@ impl Pin {
         console_log!("pin : {}:{}", angle.cos(), angle.sin());
         console_log!("pin : {}:{}", len.0, len.1);
         context.move_to(
-            (self.pos.x - len.0 / 2.0) * scale + pos.0,
-            (self.pos.y - len.1 / 2.0) * scale + pos.1,
+            (self.pos.x - len.0 / 2.0) * scale + pos.x,
+            (self.pos.y - len.1 / 2.0) * scale + pos.y,
         );
         context.line_to(
-            (self.pos.x + len.0 / 2.0) * scale + pos.0,
-            (self.pos.y + len.1 / 2.0) * scale + pos.1,
+            (self.pos.x + len.0 / 2.0) * scale + pos.x,
+            (self.pos.y + len.1 / 2.0) * scale + pos.y,
         );
     }
 }
@@ -480,22 +484,22 @@ impl Symbol {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
         console_log!("drawing {}", self.id);
         for line in &self.lines {
-            line.draw(context, pos, scale);
+            line.draw(context, pos.clone(), scale);
         }
         for arc in &self.arcs {
-            arc.draw(context, pos, scale);
+            arc.draw(context, pos.clone(), scale);
         }
         for pin in &self.pins {
-            pin.draw(context, pos, scale);
+            pin.draw(context, pos.clone(), scale);
         }
         for rect in &self.rects {
-            rect.draw(context, pos, scale);
+            rect.draw(context, pos.clone(), scale);
         }
         for circ in &self.circs {
-            circ.draw(context, pos, scale);
+            circ.draw(context, pos.clone(), scale);
         }
     }
 }
@@ -504,7 +508,7 @@ impl Symbol {
 pub struct SymbolTemp {
     pub id: String,
     pub props: Vec<Property>,
-    pub pos: Pos,
+    pub pos: Point,
     pub symbs: Vec<Symbol>,
     pub uuid: UUID,
 }
@@ -514,30 +518,30 @@ impl SymbolTemp {
         SymbolTemp {
             id: "".to_string(),
             props: Vec::<Property>::new(),
-            pos: Pos::blank(),
+            pos: Point::blank(),
             symbs: Vec::<Symbol>::new(),
             uuid: "".to_string(),
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
         for symb in &self.symbs {
-            symb.draw(context, pos, scale)
+            symb.draw(context, pos.clone(), scale)
         }
         // // draws an "x"
         // let size = 1.0;
         // context.move_to(
-        //     ( self.pos.x - size) * scale + pos.0,
-        //     (self.pos.y - size) * scale + pos.1,
+        //     ( self.pos.x - size) * scale + pos.x,
+        //     (self.pos.y - size) * scale + pos.y,
         // );
-        // context.line_to(( self.pos.x + size) * scale + pos.0,
-        // (self.pos.y + size) * scale + pos.1);
+        // context.line_to(( self.pos.x + size) * scale + pos.x,
+        // (self.pos.y + size) * scale + pos.y);
         // context.move_to(
-        //     ( self.pos.x - size) * scale + pos.0,
-        //     (self.pos.y + size) * scale + pos.1,
+        //     ( self.pos.x - size) * scale + pos.x,
+        //     (self.pos.y + size) * scale + pos.y,
         // );
-        // context.line_to(( self.pos.x + size) * scale + pos.0,
-        // (self.pos.y - size) * scale + pos.1);
+        // context.line_to(( self.pos.x + size) * scale + pos.x,
+        // (self.pos.y - size) * scale + pos.y);
     }
 }
 
@@ -546,7 +550,7 @@ pub struct SymbolInst {
     pub id: String,
     pub parent: Option<SymbolTemp>,
     pub props: Vec<Property>,
-    pub pos: Pos,
+    pub pos: Point,
     pub uuid: UUID,
 }
 
@@ -556,14 +560,14 @@ impl SymbolInst {
             id: "".to_string(),
             parent: None,
             props: Vec::<Property>::new(),
-            pos: Pos::blank(),
+            pos: Point::blank(),
             uuid: "".to_string(),
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
         if self.parent.is_some() {
-            let pos = (pos.0 + (self.pos.x * scale), pos.1 + (self.pos.y * scale));
+            let pos = Point {x: pos.x + (self.pos.x * scale), y: pos.y + (self.pos.y * scale), a: 0.0};
             self.parent.as_ref().unwrap().draw(context, pos, scale);
         }
     }
@@ -573,7 +577,7 @@ impl SymbolInst {
 pub struct Label {
     pub id: String,
     pub shape: u8, // todo : enum
-    pub pos: Pos,
+    pub pos: Point,
     // todo : effects
     pub uuid: UUID,
 }
@@ -588,54 +592,57 @@ impl Label {
         Label {
             id: "".to_string(),
             shape: 0,
-            pos: Pos::blank(),
+            pos: Point::blank(),
             uuid: "".to_string(),
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
         // draws an label based on label type
         // todo : type based rendering
         if (self.shape != 0xf0) {
             return;
         }
+
         let size = 1.0;
 
         // let poss = [
 
         // ];
 
+        //context.rotate(0.0);
+
         // draw text
         context.move_to(
-            (self.pos.x + size * 2.5) * scale + pos.0,
-            (self.pos.y) * scale + pos.1,
+            (self.pos.x + size * 2.5) * scale + pos.x,
+            (self.pos.y) * scale + pos.y,
         );
         context.set_font(format!("{}px monospace", (2.0 * scale) as i32).as_str());
         context.fill_text(
             self.id.as_str(),
-            (self.pos.x + size * 2.5) * scale + pos.0,
-            (self.pos.y + 1.0) * scale + pos.1,
+            (self.pos.x + size * 2.5) * scale + pos.x,
+            (self.pos.y + 1.0) * scale + pos.y,
         );
 
         // draw frame
-        context.move_to((self.pos.x) * scale + pos.0, (self.pos.y) * scale + pos.1);
+        context.move_to((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
         context.line_to(
-            (self.pos.x + size) * scale + pos.0,
-            (self.pos.y + size) * scale + pos.1,
+            (self.pos.x + size) * scale + pos.x,
+            (self.pos.y + size) * scale + pos.y,
         );
         context.line_to(
-            (self.pos.x + size * 2.0) * scale + pos.0,
-            (self.pos.y + size) * scale + pos.1,
+            (self.pos.x + size * 2.0) * scale + pos.x,
+            (self.pos.y + size) * scale + pos.y,
         );
         context.line_to(
-            (self.pos.x + size * 2.0) * scale + pos.0,
-            (self.pos.y - size) * scale + pos.1,
+            (self.pos.x + size * 2.0) * scale + pos.x,
+            (self.pos.y - size) * scale + pos.y,
         );
         context.line_to(
-            (self.pos.x + size) * scale + pos.0,
-            (self.pos.y - size) * scale + pos.1,
+            (self.pos.x + size) * scale + pos.x,
+            (self.pos.y - size) * scale + pos.y,
         );
-        context.line_to((self.pos.x) * scale + pos.0, (self.pos.y) * scale + pos.1);
+        context.line_to((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
     }
 }
 
@@ -662,7 +669,7 @@ impl Parser {
         let mut schem = Schematic::blank();
 
         // generic parsers
-        let p_pos = |obj: &Sexp| -> Pos {
+        let p_pos = |obj: &Sexp| -> Point {
             let xya = obj.list().unwrap();
             let x = xya[1].string().unwrap().parse::<f64>().unwrap();
             let y = xya[2].string().unwrap().parse::<f64>().unwrap();
@@ -672,7 +679,7 @@ impl Parser {
                 0.0
             };
 
-            return Pos { x: x, y: y, a: a };
+            return Point { x: x, y: y, a: a };
         };
 
         let p_junc = |obj: &Sexp| -> Junction {
@@ -710,7 +717,11 @@ impl Parser {
                 let name = get_name(obj);
                 match (obj.is_list(), name) {
                     (true, "width") => {
-                        stroke.width = obj.list().unwrap()[1].string().unwrap().parse::<f64>().unwrap()
+                        stroke.width = obj.list().unwrap()[1]
+                            .string()
+                            .unwrap()
+                            .parse::<f64>()
+                            .unwrap()
                     }
                     (true, "type") => {
                         stroke.format = match obj.list().unwrap()[1].string().unwrap().as_str() {
@@ -730,7 +741,15 @@ impl Parser {
                     _ => {}
                 }
             }
-            console_log!("stroke : w {} t {} c {},{},{},{}",stroke.width, 0, stroke.color.0, stroke.color.1, stroke.color.2, stroke.color.3);
+            console_log!(
+                "stroke : w {} t {} c {},{},{},{}",
+                stroke.width,
+                0,
+                stroke.color.0,
+                stroke.color.1,
+                stroke.color.2,
+                stroke.color.3
+            );
             stroke
         };
         let p_poly = |obj: &Sexp| -> Polyline {
@@ -1173,29 +1192,29 @@ impl Schematic {
         Parser::schematic(&schem_obj)
     }
 
-    pub fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: (f64, f64), scale: f64) {
+    pub fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
         context.clear_rect(0.0, 0.0, 640.0, 480.0);
         context.begin_path();
         for wire in &self.wires {
-            wire.draw(context, pos, scale);
+            wire.draw(context, pos.clone(), scale);
         }
         for junc in &self.juncs {
-            junc.draw(context, pos, scale);
+            junc.draw(context, pos.clone(), scale);
         }
         for text in &self.texts {
-            text.draw(context, pos, scale);
+            text.draw(context, pos.clone(), scale);
         }
         for poly in &self.polys {
-            poly.draw(context, pos, scale);
+            poly.draw(context, pos.clone(), scale);
         }
         for nocon in &self.nocons {
-            nocon.draw(context, pos, scale);
+            nocon.draw(context, pos.clone(), scale);
         }
         for label in &self.labels {
-            label.draw(context, pos, scale);
+            label.draw(context, pos.clone(), scale);
         }
         for symb in &self.symbs {
-            symb.draw(context, pos, scale);
+            symb.draw(context, pos.clone(), scale);
         }
         //self.lib[1].draw(context, pos, scale);
         context.stroke();
