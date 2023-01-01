@@ -48,10 +48,30 @@ impl Pos {
 }
 
 #[derive(Debug, Clone)]
+pub enum StrokeFormat {
+    dash,
+    dash_dot,
+    dash_dot_dot,
+    dot,
+    default,
+    solid,
+}
+
+#[derive(Debug, Clone)]
 pub struct Stroke {
     pub width: f64,
-    pub s_type: u8,              // todo , reserved word?
+    pub format: StrokeFormat,
     pub color: (u8, u8, u8, u8), // todo real color obj
+}
+
+impl Stroke {
+    fn blank() -> Stroke {
+        Stroke {
+            width: 0.0,
+            format: StrokeFormat::default,
+            color: (0, 0, 0, 0),
+        }
+    }
 }
 
 type UUID = String; // todo : real uuid obj
@@ -67,11 +87,7 @@ impl Wire {
     fn blank() -> Wire {
         Wire {
             poss: Vec::<Pos>::new(),
-            stroke: Stroke {
-                width: 1.0,
-                s_type: 1,
-                color: (0, 0, 0, 0),
-            },
+            stroke: Stroke::blank(),
             uuid: "".to_string(),
         }
     }
@@ -111,11 +127,7 @@ impl Rect {
                     a: 0.0,
                 },
             ),
-            stroke: Stroke {
-                width: 1.0,
-                s_type: 1,
-                color: (0, 0, 0, 0),
-            },
+            stroke: Stroke::blank(),
             fill: 0,
             uuid: "".to_string(),
         }
@@ -171,11 +183,7 @@ impl Circ {
                 a: 0.0,
             },
             radius: 0.0,
-            stroke: Stroke {
-                width: 1.0,
-                s_type: 1,
-                color: (0, 0, 0, 0),
-            },
+            stroke: Stroke::blank(),
             fill: 0,
             uuid: "".to_string(),
         }
@@ -286,11 +294,7 @@ impl Polyline {
     fn blank() -> Polyline {
         Polyline {
             poss: Vec::<Pos>::new(),
-            stroke: Stroke {
-                width: 1.0,
-                s_type: 1,
-                color: (0, 0, 0, 0),
-            },
+            stroke: Stroke::blank(),
             uuid: "".to_string(),
         }
     }
@@ -307,6 +311,8 @@ impl Polyline {
                 (point.x) * scale + pos.0,
                 (point.y) * scale + pos.1
             );
+            context.set_line_dash(&JsValue::from(""));
+            context.set_stroke_style(&JsValue::from(format!("rgba({}, {}, {}, {})", self.stroke.color.0, self.stroke.color.0, self.stroke.color.2, 255)));
             context.line_to((point.x) * scale + pos.0, (point.y) * scale + pos.1);
         }
     }
@@ -323,28 +329,8 @@ pub struct Arc {
 impl Arc {
     fn blank() -> Arc {
         Arc {
-            poss: (
-                Pos {
-                    x: 0.0,
-                    y: 0.0,
-                    a: 0.0,
-                },
-                Pos {
-                    x: 0.0,
-                    y: 0.0,
-                    a: 0.0,
-                },
-                Pos {
-                    x: 0.0,
-                    y: 0.0,
-                    a: 0.0,
-                },
-            ),
-            stroke: Stroke {
-                width: 1.0,
-                s_type: 1,
-                color: (0, 0, 0, 0),
-            },
+            poss: (Pos::blank(), Pos::blank(), Pos::blank()),
+            stroke: Stroke::blank(),
             fill: false,
             uuid: "".to_string(),
         }
@@ -718,6 +704,35 @@ impl Parser {
             //
             junction
         };
+        let p_stroke = |obj: &Sexp| -> Stroke {
+            let mut stroke = Stroke::blank();
+            for obj in obj.list().unwrap() {
+                let name = get_name(obj);
+                match (obj.is_list(), name) {
+                    (true, "width") => {
+                        stroke.width = obj.list().unwrap()[1].string().unwrap().parse::<f64>().unwrap()
+                    }
+                    (true, "type") => {
+                        stroke.format = match obj.list().unwrap()[1].string().unwrap().as_str() {
+                            "dash" => StrokeFormat::dash,
+                            _ => StrokeFormat::default,
+                        };
+                    }
+                    (true, "color") => {
+                        let color = obj.list().unwrap();
+                        stroke.color = (
+                            color[1].string().unwrap().parse::<u8>().unwrap(),
+                            color[2].string().unwrap().parse::<u8>().unwrap(),
+                            color[3].string().unwrap().parse::<u8>().unwrap(),
+                            color[4].string().unwrap().parse::<u8>().unwrap(),
+                        )
+                    }
+                    _ => {}
+                }
+            }
+            console_log!("stroke : w {} t {} c {},{},{},{}",stroke.width, 0, stroke.color.0, stroke.color.1, stroke.color.2, stroke.color.3);
+            stroke
+        };
         let p_poly = |obj: &Sexp| -> Polyline {
             let mut poly = Polyline::blank();
             //
@@ -734,6 +749,9 @@ impl Parser {
                     }
                     (true, "uuid") => {
                         poly.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
+                    }
+                    (true, "stroke") => {
+                        poly.stroke = p_stroke(obj);
                     }
                     // todo : stroke
                     _ => {
@@ -1019,7 +1037,7 @@ impl Parser {
                         symb.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
                     }
                     (true, "at") => {
-                       symb.pos = p_pos(obj);
+                        symb.pos = p_pos(obj);
                     }
                     // todo : (power)
                     // todo : pin_names
