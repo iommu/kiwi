@@ -37,68 +37,24 @@ macro_rules! console_log {
 pub fn start(file: &str) -> Result<(), JsValue> {
     let document = web_sys::window().unwrap().document().unwrap();
     let canvas = document.get_element_by_id("canvas").unwrap().dyn_into::<web_sys::HtmlCanvasElement>()?;
+    canvas.style().set_property("border", "solid")?;
+
     canvas.set_width(640);
     canvas.set_height(480);
-    canvas.style().set_property("border", "solid")?;
     let context = canvas
         .get_context("2d")?
         .unwrap()
         .dyn_into::<web_sys::CanvasRenderingContext2d>()?;
     let context = Rc::new(context);
     let pressed = Rc::new(Cell::new(false));
-    let coords = Rc::new(Cell::new((0.0f64, 0.0f64)));
     let scale = Rc::new(Cell::new(2.0f64));
     let delta = Rc::new(Cell::new((0.0f64, 0.0f64)));
     let schematic = Schematic::new(file);
-    schematic.draw(&context, Point { x: coords.get().0, y: coords.get().1, a: 0.0 }, scale.get());
-    {
-        let context = context.clone();
-        let pressed = pressed.clone();
-        let coords = coords.clone();
-        let scale = scale.clone();
-        let schematic = schematic.clone();
-        let delta = delta.clone();
-        let closure = Closure::wrap(Box::new(move |event: web_sys::MouseEvent| {
-            if pressed.get() {
-                coords.set((
-                    coords.get().0 + event.offset_x() as f64 - delta.get().0,
-                    coords.get().1 + event.offset_y() as f64 - delta.get().1,
-                ));
-                delta.set((event.offset_x() as f64, event.offset_y() as f64));
-                schematic.draw(&context, Point { x: coords.get().0, y: coords.get().1, a: 0.0 }, scale.get());
-
-            }
-        }) as Box<dyn FnMut(_)>);
-        canvas.add_event_listener_with_callback("mousemove", closure.as_ref().unchecked_ref())?;
-        closure.forget();
-    }
+    schematic.draw(&context, scale.get());
 
     {
         let context = context.clone();
         let pressed = pressed.clone();
-        let coords = coords.clone();
-        
-        let delta = delta.clone();
-        let closure = Closure::wrap(Box::new(move |event: web_sys::MouseEvent| {
-            pressed.set(true);
-            delta.set((event.offset_x() as f64, event.offset_y() as f64));
-        }) as Box<dyn FnMut(_)>);
-        canvas.add_event_listener_with_callback("mousedown", closure.as_ref().unchecked_ref())?;
-        closure.forget();
-    }
-    {
-        let context = context.clone();
-        let pressed = pressed.clone();
-        let closure = Closure::wrap(Box::new(move |event: web_sys::MouseEvent| {
-            pressed.set(false);
-        }) as Box<dyn FnMut(_)>);
-        canvas.add_event_listener_with_callback("mouseup", closure.as_ref().unchecked_ref())?;
-        closure.forget();
-    }
-    {
-        let context = context.clone();
-        let pressed = pressed.clone();
-        let coords = coords.clone();
         let scale = scale.clone();
         let schematic = schematic.clone();
         // let schematic = schematic.clone();
@@ -106,7 +62,7 @@ pub fn start(file: &str) -> Result<(), JsValue> {
         let closure = Closure::wrap(Box::new(move |event: web_sys::WheelEvent| {
             event.prevent_default();
             scale.set(scale.get()+ (event.delta_y() as f64 / 500.0));
-            schematic.draw(&context, Point { x: coords.get().0, y: coords.get().1, a: 0.0 }, scale.get());
+            schematic.draw(&context, scale.get());
         }) as Box<dyn FnMut(_)>);
         canvas.add_event_listener_with_callback("wheel", closure.as_ref().unchecked_ref())?;
         closure.forget();

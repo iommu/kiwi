@@ -1192,9 +1192,10 @@ impl Schematic {
         Parser::schematic(&schem_obj)
     }
 
-    pub fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
+    pub fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         context.clear_rect(0.0, 0.0, 640.0, 480.0);
         context.begin_path();
+        let pos = Point::blank();
         for wire in &self.wires {
             wire.draw(context, pos.clone(), scale);
         }
