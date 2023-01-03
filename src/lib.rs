@@ -5,6 +5,7 @@ use schematic::Schematic;
 use schematic::Point;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use web_sys::Document;
 mod schematic;
 
 #[wasm_bindgen]
@@ -35,10 +36,7 @@ macro_rules! console_log {
 #[wasm_bindgen]
 pub fn start(file: &str) -> Result<(), JsValue> {
     let document = web_sys::window().unwrap().document().unwrap();
-    let canvas = document
-        .create_element("canvas")?
-        .dyn_into::<web_sys::HtmlCanvasElement>()?;
-    document.body().unwrap().append_child(&canvas)?;
+    let canvas = document.get_element_by_id("canvas").unwrap().dyn_into::<web_sys::HtmlCanvasElement>()?;
     canvas.set_width(640);
     canvas.set_height(480);
     canvas.style().set_property("border", "solid")?;

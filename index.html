@@ -10,51 +10,13 @@
   <div id="drop_zone" ondrop="module.dropHandler(event);" ondragover="module.dragOverHandler(event);">
     <p>Drag one or more files to this <i>drop zone</i>.</p>
   </div>
-
   <canvas id="canvas"></canvas>
   <script type="text/javascript">
     const module = {};
   </script>
   <script type="module">
     import init, { start } from "./pkg/kiwi.js";
-    function dropHandler(ev) {
-      console.log('File(s) dropped');
-
-      // Prevent default behavior (Prevent file from being opened)
-      ev.preventDefault();
-
-      if (ev.dataTransfer.items) {
-        // Use DataTransferItemList interface to access the file(s)
-        [...ev.dataTransfer.items].forEach((item, i) => {
-          // If dropped items aren't files, reject them
-          if (item.kind === 'file') {
-            const file = item.getAsFile();
-            console.log(`… file[${i}].name = ${file.name}`);
-            var reader = new FileReader();
-            reader.readAsText(file, "UTF-8");
-            reader.onload = function (evt) {
-              init().then(() => {
-                start(evt.target.result);
-              });
-            }
-          }
-        });
-      } else {
-        // Use DataTransfer interface to access the file(s)
-        [...ev.dataTransfer.files].forEach((file, i) => {
-          console.log(`… file[${i}].name = ${file.name}`);
-        });
-      }
-    }
-    function dragOverHandler(ev) {
-      console.log('File(s) in drop zone');
-
-      // Prevent default behavior (Prevent file from being opened)
-      ev.preventDefault();
-    }
-    module.dropHandler = dropHandler;
-
-    module.dragOverHandler = dragOverHandler;
+   
     fetch('test/example.kicad_sch')
       .then(response => response.text())
       .then(text => {
