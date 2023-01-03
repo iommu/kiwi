@@ -39,21 +39,15 @@ pub fn start(file: &str) -> Result<(), JsValue> {
     let canvas = document.get_element_by_id("canvas").unwrap().dyn_into::<web_sys::HtmlCanvasElement>()?;
     canvas.style().set_property("border", "solid")?;
 
-    canvas.set_width(640);
-    canvas.set_height(480);
-    let context = canvas
-        .get_context("2d")?
-        .unwrap()
-        .dyn_into::<web_sys::CanvasRenderingContext2d>()?;
-    let context = Rc::new(context);
+    let canvas = Rc::new(canvas);
     let pressed = Rc::new(Cell::new(false));
     let scale = Rc::new(Cell::new(2.0f64));
     let delta = Rc::new(Cell::new((0.0f64, 0.0f64)));
     let schematic = Schematic::new(file);
-    schematic.draw(&context, scale.get());
+    schematic.draw(&canvas, scale.get());
 
     {
-        let context = context.clone();
+        let _canvas = canvas.clone();
         let pressed = pressed.clone();
         let scale = scale.clone();
         let schematic = schematic.clone();
@@ -62,7 +56,7 @@ pub fn start(file: &str) -> Result<(), JsValue> {
         let closure = Closure::wrap(Box::new(move |event: web_sys::WheelEvent| {
             event.prevent_default();
             scale.set(scale.get()+ (event.delta_y() as f64 / 500.0));
-            schematic.draw(&context, scale.get());
+            schematic.draw(&_canvas, scale.get());
         }) as Box<dyn FnMut(_)>);
         canvas.add_event_listener_with_callback("wheel", closure.as_ref().unchecked_ref())?;
         closure.forget();

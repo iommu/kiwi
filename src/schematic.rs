@@ -1192,7 +1192,14 @@ impl Schematic {
         Parser::schematic(&schem_obj)
     }
 
-    pub fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
+    pub fn draw(&self, canvas: &web_sys::HtmlCanvasElement, scale: f64) {
+        canvas.set_height((1080.0 * scale) as u32);
+        canvas.set_width((1080.0 * 1.414 * scale) as u32);
+        let scale = scale * 4.0; //todo fix scaling
+        let context = &canvas
+            .get_context("2d").unwrap()
+            .unwrap()
+            .dyn_into::<web_sys::CanvasRenderingContext2d>().unwrap();
         context.clear_rect(0.0, 0.0, 640.0, 480.0);
         context.begin_path();
         let pos = Point::blank();
