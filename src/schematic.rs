@@ -146,8 +146,8 @@ impl Rect {
         );
         console_log!(
             "{}:{}, {}:{}",
-            (self.poss.0.x) * scale + pos.x,
-            (self.poss.0.y) * scale + pos.y,
+            (self.poss.0.x+ pos.x ) * scale ,
+            (self.poss.0.y+ pos.y) * scale ,
             (self.poss.1.x - self.poss.0.x) * scale,
             (self.poss.1.y - self.poss.0.y) * scale
         );
@@ -158,10 +158,10 @@ impl Rect {
             (self.poss.0.y) * scale + pos.y,
         );
         context.rect(
-            pos.x + (self.poss.0.x) * scale,
-            pos.y + (self.poss.0.y) * scale,
+            (self.poss.0.x) * scale + pos.x,
+            (self.poss.0.y) * scale + pos.y,
             (self.poss.1.x - self.poss.0.x) * scale,
-            -(self.poss.1.y + self.poss.0.y) * scale, //todo : why?
+            (self.poss.1.y - self.poss.0.y) * scale, //todo : why?
         );
     }
 }
@@ -452,12 +452,12 @@ impl Pin {
         console_log!("pin : {}:{}", angle.cos(), angle.sin());
         console_log!("pin : {}:{}", len.0, len.1);
         context.move_to(
-            (self.pos.x - len.0 / 2.0) * scale + pos.x,
-            (self.pos.y - len.1 / 2.0) * scale + pos.y,
+            (self.pos.x) * scale + pos.x,
+            (self.pos.y) * scale + pos.y,
         );
         context.line_to(
-            (self.pos.x + len.0 / 2.0) * scale + pos.x,
-            (self.pos.y + len.1 / 2.0) * scale + pos.y,
+            (self.pos.x + len.0) * scale + pos.x,
+            (self.pos.y + len.1) * scale + pos.y,
         );
     }
 }
