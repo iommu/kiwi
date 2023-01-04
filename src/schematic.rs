@@ -106,10 +106,17 @@ impl Wire {
 }
 
 #[derive(Debug, Clone)]
+pub enum FillType {
+    none,
+    outline,
+    background,
+}
+
+#[derive(Debug, Clone)]
 pub struct Rect {
     pub poss: (Point, Point),
     pub stroke: Stroke,
-    pub fill: u8,
+    pub fill: FillType,
     pub uuid: UUID,
 }
 
@@ -117,19 +124,11 @@ impl Rect {
     fn blank() -> Rect {
         Rect {
             poss: (
-                Point {
-                    x: 0.0,
-                    y: 0.0,
-                    a: 0.0,
-                },
-                Point {
-                    x: 0.0,
-                    y: 0.0,
-                    a: 0.0,
-                },
+                Point::blank(),
+                Point::blank(),
             ),
             stroke: Stroke::blank(),
-            fill: 0,
+            fill: FillType::none,
             uuid: "".to_string(),
         }
     }
@@ -157,12 +156,26 @@ impl Rect {
             (self.poss.0.x) * scale + pos.x,
             (self.poss.0.y) * scale + pos.y,
         );
-        context.rect(
-            (self.poss.0.x) * scale + pos.x,
-            (self.poss.0.y) * scale + pos.y,
-            (self.poss.1.x - self.poss.0.x) * scale,
-            (self.poss.1.y - self.poss.0.y) * scale, //todo : why?
-        );
+        match self.fill {
+            FillType::background => {
+                context.set_fill_style(&JsValue::from("orange"));
+                context.fill_rect(
+                    (self.poss.0.x) * scale + pos.x,
+                    (self.poss.0.y) * scale + pos.y,
+                    (self.poss.1.x - self.poss.0.x) * scale,
+                    (self.poss.1.y - self.poss.0.y) * scale, //todo : why?
+                );
+            }
+            _ => {
+                context.rect(
+                    (self.poss.0.x) * scale + pos.x,
+                    (self.poss.0.y) * scale + pos.y,
+                    (self.poss.1.x - self.poss.0.x) * scale,
+                    (self.poss.1.y - self.poss.0.y) * scale, //todo : why?
+                );
+            }
+        }
+        
     }
 }
 
@@ -178,11 +191,7 @@ pub struct Circ {
 impl Circ {
     fn blank() -> Circ {
         Circ {
-            pos: Point {
-                x: 0.0,
-                y: 0.0,
-                a: 0.0,
-            },
+            pos: Point::blank(),
             radius: 0.0,
             stroke: Stroke::blank(),
             fill: 0,
@@ -842,9 +851,16 @@ impl Parser {
                     (true, "end") => {
                         rect.poss.1 = p_pos(obj);
                     }
+                    (true, "fill") => {
+                        rect.fill = match obj.list().unwrap()[1].list().unwrap()[1].string().unwrap().as_str() {
+                            "background" => FillType::background,
+                            _ => FillType::none,
+                        };
+                    }
                     (true, "uuid") => {
                         rect.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
                     }
+                    
                     // todo : stroke
                     _ => {
                         //println!("{:?}", name);
