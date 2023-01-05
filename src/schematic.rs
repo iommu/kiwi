@@ -257,19 +257,15 @@ impl Text {
         // todo : move pos based on diam
         let angle = pos.a + self.pos.a;
         context.move_to((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
-        // if angle != 0.0 {
-        //     context.save();
-        //     context.rotate(angle);
-        // }
-        context.set_font(format!("{}px monospace", (2.0 * scale) as i32).as_str());
-        context.fill_text(
-            self.text.as_str(),
-            (self.pos.x) * scale + pos.x,
-            (self.pos.y) * scale + pos.y,
-        );
-        // if angle != 0.0 {
-        //     context.restore();
-        // }
+        context.set_font(format!("{}px monospace", (1.8 * scale) as i32).as_str());
+        for (index, newline) in self.text.split("\\n").enumerate() {
+            context.fill_text(
+                newline,
+                (self.pos.x) * scale + pos.x,
+                (self.pos.y + (1.8 * index as f64) ) * scale + pos.y,
+            );
+        }
+
     }
 }
 
@@ -549,12 +545,12 @@ impl SymbolInst {
         if self.parent.is_some() {
             let angle = (self.pos.a + pos.a) / 180.0 * f64::consts::PI;
             context.translate((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
-            context.scale(1.0, (self.mirror.1 as i32 as f64 * 2.0 - 1.0));
+            context.scale(-(self.mirror.0 as i32 as f64 * 2.0 - 1.0), (self.mirror.1 as i32 as f64 * 2.0 - 1.0));
             context.rotate(angle);
             // console_log!("id {} mirror {}:{}", self.id, (self.mirror.0 as i32 as f64 * 2.0 - 1.0), (self.mirror.1 as i32 as f64 * 2.0 - 1.0));
             self.parent.as_ref().unwrap().draw(context, Point::blank(), scale);
             context.rotate(-angle);
-            context.scale(1.0, (self.mirror.1 as i32 as f64 * 2.0 - 1.0));
+            context.scale(-(self.mirror.0 as i32 as f64 * 2.0 - 1.0), (self.mirror.1 as i32 as f64 * 2.0 - 1.0));
             context.translate(-((self.pos.x) * scale + pos.x), -((self.pos.y) * scale + pos.y));
         }
     }
@@ -597,7 +593,7 @@ impl Label {
         let angle = (self.pos.a) / 180.0 * f64::consts::PI;
         context.translate((self.pos.x) * scale, (self.pos.y) * scale);
 
-        context.set_font(format!("{}px monospace", (2.0 * scale) as i32).as_str());
+        context.set_font(format!("{}px monospace", (1.8 * scale) as i32).as_str());
         if angle > f64::consts::PI*0.5 && angle <= f64::consts::PI*1.5 {
             context.rotate(-angle-f64::consts::PI); // half rotate to flip text    
             context.set_text_align("right");
@@ -1067,8 +1063,8 @@ impl Parser {
                     }
                     (true, "mirror") => {
                         symb.mirror = match obj.list().unwrap()[1].string().unwrap().as_str() {
-                            "x" => (true, false),
-                            "y" => (false, true),
+                            "x" => (false, true),
+                            "y" => (true, false), // todo why x/y swapped?
                             "xy" | "yx" => (true, true),
                             _ => (false, false)
                         }
