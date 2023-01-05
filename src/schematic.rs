@@ -430,23 +430,37 @@ impl Property {
             key: "".to_string(),
             value: "".to_string(),
             id: 0,
-            show: false,
+            show: true,
             pos: Point::blank(),
         }
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
-        if !self.show {return;} // don't continue if hiden
+        // if !self.show {return;} // don't continue if hiden
         // todo : inherit from Text rendering
-        // todo : move pos based on diam
-        let angle = pos.a + self.pos.a;
-        context.move_to((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
+        let angle = (self.pos.a) / 180.0 * f64::consts::PI;
+        context.translate((self.pos.x) * scale, (self.pos.y) * scale);
         context.set_font(format!("{}px monospace", (1.8 * scale) as i32).as_str());
-        context.fill_text(
-            self.key.as_str(),
-            (self.pos.x) * scale + pos.x,
-            (self.pos.y + (1.8 * 1 as f64) ) * scale + pos.y,
-        );
+        if angle > f64::consts::PI*0.5 && angle <= f64::consts::PI*1.5 {
+            context.rotate(-angle-f64::consts::PI); // half rotate to flip text    
+            context.set_text_align("right");
+            context.fill_text(
+                    self.key.as_str(),
+                    0.0,
+                    (1.8) * scale,
+                );
+            context.rotate(f64::consts::PI); // finish rotation
+        } else {
+            context.rotate(-angle); // why inverse?
+            context.set_text_align("left");
+                context.fill_text(
+                    self.key.as_str(),
+                    0.0,
+                    (1.8) * scale,
+                );
+        }
+        context.rotate(angle);
+        context.translate(-((self.pos.x) * scale), -((self.pos.y) * scale));
     }
 }
 
@@ -580,6 +594,11 @@ impl SymbolInst {
             context.rotate(angle);
             // console_log!("id {} mirror {}:{}", self.id, (self.mirror.0 as i32 as f64 * 2.0 - 1.0), (self.mirror.1 as i32 as f64 * 2.0 - 1.0));
             self.parent.as_ref().unwrap().draw(context, Point::blank(), scale);
+
+            for prop in &self.props {
+                prop.draw(context, pos.clone(), scale);
+            }
+
             context.rotate(-angle);
             context.scale(-(self.mirror.0 as i32 as f64 * 2.0 - 1.0), (self.mirror.1 as i32 as f64 * 2.0 - 1.0));
             context.translate(-((self.pos.x) * scale + pos.x), -((self.pos.y) * scale + pos.y));
@@ -1080,6 +1099,13 @@ impl Parser {
                             .unwrap();
                         if props[4].is_list() {
                             prop.pos = p_pos(&props[4]);
+                        }
+                        if props.len() >= 6 && props[5].is_list() {
+                            for obj in props[5].list().unwrap() {
+                                if obj.is_string() && obj.string().unwrap().as_str() == "hide" {
+                                    prop.show = false;
+                                }
+                            }
                         }
                         // todo : effect
                         // todo : "at" parser
