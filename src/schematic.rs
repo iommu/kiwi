@@ -184,8 +184,8 @@ impl Circ {
         console_log!("DRAWING CIRC");
         // draw pos to pos using stroke
         context.move_to(
-            (self.pos.x) * scale + pos.x + (self.radius * scale),
-            (self.pos.y) * scale + pos.y + (self.radius * scale),
+            (self.pos.x + self.radius) * scale + pos.x,
+            (self.pos.y) * scale + pos.y,
         );
         context.arc(
             (self.pos.x) * scale + pos.x,
@@ -596,20 +596,27 @@ impl Label {
 
         let angle = (self.pos.a) / 180.0 * f64::consts::PI;
         context.translate((self.pos.x) * scale, (self.pos.y) * scale);
-        context.rotate(-angle); // why inverse?
 
-        // draw text
-        context.move_to(
-            0.0,
-            0.0,
-        );
-        // todo flip text at certain rotation
         context.set_font(format!("{}px monospace", (2.0 * scale) as i32).as_str());
-        context.fill_text(
-            self.id.as_str(),
-            (size * 2.5) * scale,
-            (1.0) * scale,
-        );
+        if angle > f64::consts::PI*0.5 && angle <= f64::consts::PI*1.5 {
+            context.rotate(-angle-f64::consts::PI); // half rotate to flip text    
+            context.set_text_align("right");
+            context.fill_text(
+                self.id.as_str(),
+                -(size * 2.5) * scale,
+                (1.0) * scale,
+            );
+            context.rotate(f64::consts::PI); // finish rotation
+        } else {
+            context.rotate(-angle); // why inverse?
+            context.set_text_align("left");
+            context.fill_text(
+                self.id.as_str(),
+                (size * 2.5) * scale,
+                (1.0) * scale,
+            );
+
+        }
 
         // draw frame
         context.move_to(0.0, 0.0);
