@@ -93,14 +93,15 @@ impl Wire {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         // draw pos to pos using stroke
+        // todo : ensure that vector exists
         context.move_to(
-            (self.poss[0].x) * scale + pos.x,
-            (self.poss[0].y) * scale + pos.y,
+            (self.poss[0].x) * scale,
+            (self.poss[0].y) * scale,
         );
         for point in &self.poss {
-            context.line_to((point.x) * scale + pos.x, (point.y) * scale + pos.y);
+            context.line_to((point.x) * scale, (point.y) * scale);
         }
     }
 }
@@ -123,10 +124,7 @@ pub struct Rect {
 impl Rect {
     fn blank() -> Rect {
         Rect {
-            poss: (
-                Point::blank(),
-                Point::blank(),
-            ),
+            poss: (Point::blank(), Point::blank()),
             stroke: Stroke::blank(),
             fill: FillType::none,
             uuid: "".to_string(),
@@ -134,28 +132,12 @@ impl Rect {
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
-        console_log!(
-            "drawing symb rect {}:{}, {}:{}, pos : {}:{}",
-            self.poss.0.x,
-            self.poss.0.y,
-            self.poss.1.x,
-            self.poss.1.y,
-            pos.x,
-            pos.y
-        );
-        console_log!(
-            "{}:{}, {}:{}",
-            (self.poss.0.x+ pos.x ) * scale ,
-            (self.poss.0.y+ pos.y) * scale ,
-            (self.poss.1.x - self.poss.0.x) * scale,
-            (self.poss.1.y - self.poss.0.y) * scale
-        );
-
         // draw pos to pos using stroke
         context.move_to(
             (self.poss.0.x) * scale + pos.x,
             (self.poss.0.y) * scale + pos.y,
         );
+
         match self.fill {
             FillType::background => {
                 context.set_fill_style(&JsValue::from("orange"));
@@ -175,7 +157,6 @@ impl Rect {
                 );
             }
         }
-        
     }
 }
 
@@ -274,13 +255,21 @@ impl Text {
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
         // todo : move pos based on diam
+        let angle = pos.a + self.pos.a;
         context.move_to((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
+        // if angle != 0.0 {
+        //     context.save();
+        //     context.rotate(angle);
+        // }
         context.set_font(format!("{}px monospace", (2.0 * scale) as i32).as_str());
         context.fill_text(
             self.text.as_str(),
             (self.pos.x) * scale + pos.x,
             (self.pos.y) * scale + pos.y,
         );
+        // if angle != 0.0 {
+        //     context.restore();
+        // }
     }
 }
 
@@ -424,6 +413,7 @@ pub struct Property {
 
 impl Property {
     fn blank() -> Property {
+        // todo : rotate
         Property {
             key: "".to_string(),
             value: "".to_string(),
@@ -454,20 +444,13 @@ impl Pin {
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
-        let angle = self.pos.a / 180.0 * f64::consts::PI;
-        let len = (angle.cos() * self.len, angle.sin() * self.len);
-        console_log!("angle : {}", angle);
-
-        console_log!("pin : {}:{}", angle.cos(), angle.sin());
-        console_log!("pin : {}:{}", len.0, len.1);
-        context.move_to(
-            (self.pos.x) * scale + pos.x,
-            (self.pos.y) * scale + pos.y,
-        );
-        context.line_to(
-            (self.pos.x + len.0) * scale + pos.x,
-            (self.pos.y + len.1) * scale + pos.y,
-        );
+        let angle = (self.pos.a + pos.a) / 180.0 * f64::consts::PI;
+        context.translate((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
+        context.rotate(angle);
+        context.move_to(0.0, 0.0);
+        context.line_to((self.len) * scale, 0.0);
+        context.rotate(-angle);
+        context.translate(-((self.pos.x) * scale + pos.x), -((self.pos.y) * scale + pos.y));
     }
 }
 
@@ -517,7 +500,7 @@ impl Symbol {
 pub struct SymbolTemp {
     pub id: String,
     pub props: Vec<Property>,
-    pub pos: Point,
+    pub pos: Point, // todo : no pos on template
     pub symbs: Vec<Symbol>,
     pub uuid: UUID,
 }
@@ -527,7 +510,7 @@ impl SymbolTemp {
         SymbolTemp {
             id: "".to_string(),
             props: Vec::<Property>::new(),
-            pos: Point::blank(),
+            pos: Point::blank(), // todo : not a thing
             symbs: Vec::<Symbol>::new(),
             uuid: "".to_string(),
         }
@@ -537,20 +520,6 @@ impl SymbolTemp {
         for symb in &self.symbs {
             symb.draw(context, pos.clone(), scale)
         }
-        // // draws an "x"
-        // let size = 1.0;
-        // context.move_to(
-        //     ( self.pos.x - size) * scale + pos.x,
-        //     (self.pos.y - size) * scale + pos.y,
-        // );
-        // context.line_to(( self.pos.x + size) * scale + pos.x,
-        // (self.pos.y + size) * scale + pos.y);
-        // context.move_to(
-        //     ( self.pos.x - size) * scale + pos.x,
-        //     (self.pos.y + size) * scale + pos.y,
-        // );
-        // context.line_to(( self.pos.x + size) * scale + pos.x,
-        // (self.pos.y - size) * scale + pos.y);
     }
 }
 
@@ -560,6 +529,7 @@ pub struct SymbolInst {
     pub parent: Option<SymbolTemp>,
     pub props: Vec<Property>,
     pub pos: Point,
+    pub mirror: (bool, bool),
     pub uuid: UUID,
 }
 
@@ -570,14 +540,22 @@ impl SymbolInst {
             parent: None,
             props: Vec::<Property>::new(),
             pos: Point::blank(),
+            mirror: (false, false),
             uuid: "".to_string(),
         }
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
         if self.parent.is_some() {
-            let pos = Point {x: pos.x + (self.pos.x * scale), y: pos.y + (self.pos.y * scale), a: 0.0};
-            self.parent.as_ref().unwrap().draw(context, pos, scale);
+            let angle = (self.pos.a + pos.a) / 180.0 * f64::consts::PI;
+            context.translate((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
+            context.scale(1.0, (self.mirror.1 as i32 as f64 * 2.0 - 1.0));
+            context.rotate(angle);
+            // console_log!("id {} mirror {}:{}", self.id, (self.mirror.0 as i32 as f64 * 2.0 - 1.0), (self.mirror.1 as i32 as f64 * 2.0 - 1.0));
+            self.parent.as_ref().unwrap().draw(context, Point::blank(), scale);
+            context.rotate(-angle);
+            context.scale(1.0, (self.mirror.1 as i32 as f64 * 2.0 - 1.0));
+            context.translate(-((self.pos.x) * scale + pos.x), -((self.pos.y) * scale + pos.y));
         }
     }
 }
@@ -606,52 +584,54 @@ impl Label {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         // draws an label based on label type
         // todo : type based rendering
         if (self.shape != 0xf0) {
             return;
         }
 
-        let size = 1.0;
+        let size = 1.0; // todo global size?
 
-        // let poss = [
 
-        // ];
-
-        //context.rotate(0.0);
+        let angle = (self.pos.a) / 180.0 * f64::consts::PI;
+        context.translate((self.pos.x) * scale, (self.pos.y) * scale);
+        context.rotate(-angle); // why inverse?
 
         // draw text
         context.move_to(
-            (self.pos.x + size * 2.5) * scale + pos.x,
-            (self.pos.y) * scale + pos.y,
+            0.0,
+            0.0,
         );
+        // todo flip text at certain rotation
         context.set_font(format!("{}px monospace", (2.0 * scale) as i32).as_str());
         context.fill_text(
             self.id.as_str(),
-            (self.pos.x + size * 2.5) * scale + pos.x,
-            (self.pos.y + 1.0) * scale + pos.y,
+            (size * 2.5) * scale,
+            (1.0) * scale,
         );
 
         // draw frame
-        context.move_to((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
+        context.move_to(0.0, 0.0);
         context.line_to(
-            (self.pos.x + size) * scale + pos.x,
-            (self.pos.y + size) * scale + pos.y,
+            (size) * scale,
+            (size) * scale,
         );
         context.line_to(
-            (self.pos.x + size * 2.0) * scale + pos.x,
-            (self.pos.y + size) * scale + pos.y,
+            (size * 2.0) * scale,
+            (size) * scale,
         );
         context.line_to(
-            (self.pos.x + size * 2.0) * scale + pos.x,
-            (self.pos.y - size) * scale + pos.y,
+            (size * 2.0) * scale,
+            -(size) * scale,
         );
         context.line_to(
-            (self.pos.x + size) * scale + pos.x,
-            (self.pos.y - size) * scale + pos.y,
+            (size) * scale,
+            -(size) * scale,
         );
-        context.line_to((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
+        context.line_to(0.0, 0.0);
+        context.rotate(angle);
+        context.translate(-((self.pos.x) * scale), -((self.pos.y) * scale));
     }
 }
 
@@ -852,7 +832,11 @@ impl Parser {
                         rect.poss.1 = p_pos(obj);
                     }
                     (true, "fill") => {
-                        rect.fill = match obj.list().unwrap()[1].list().unwrap()[1].string().unwrap().as_str() {
+                        rect.fill = match obj.list().unwrap()[1].list().unwrap()[1]
+                            .string()
+                            .unwrap()
+                            .as_str()
+                        {
                             "background" => FillType::background,
                             _ => FillType::none,
                         };
@@ -860,7 +844,7 @@ impl Parser {
                     (true, "uuid") => {
                         rect.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
                     }
-                    
+
                     // todo : stroke
                     _ => {
                         //println!("{:?}", name);
@@ -1074,6 +1058,14 @@ impl Parser {
                     (true, "at") => {
                         symb.pos = p_pos(obj);
                     }
+                    (true, "mirror") => {
+                        symb.mirror = match obj.list().unwrap()[1].string().unwrap().as_str() {
+                            "x" => (true, false),
+                            "y" => (false, true),
+                            "xy" | "yx" => (true, true),
+                            _ => (false, false)
+                        }
+                    }
                     // todo : (power)
                     // todo : pin_names
                     // todo : offset
@@ -1213,14 +1205,16 @@ impl Schematic {
         canvas.set_width((1080.0 * 1.414 * scale) as u32);
         let scale = scale * 4.0; //todo fix scaling
         let context = &canvas
-            .get_context("2d").unwrap()
+            .get_context("2d")
             .unwrap()
-            .dyn_into::<web_sys::CanvasRenderingContext2d>().unwrap();
+            .unwrap()
+            .dyn_into::<web_sys::CanvasRenderingContext2d>()
+            .unwrap();
         context.clear_rect(0.0, 0.0, 640.0, 480.0);
         context.begin_path();
         let pos = Point::blank();
         for wire in &self.wires {
-            wire.draw(context, pos.clone(), scale);
+            wire.draw(context, scale);
         }
         for junc in &self.juncs {
             junc.draw(context, pos.clone(), scale);
@@ -1235,12 +1229,11 @@ impl Schematic {
             nocon.draw(context, pos.clone(), scale);
         }
         for label in &self.labels {
-            label.draw(context, pos.clone(), scale);
+            label.draw(context, scale);
         }
         for symb in &self.symbs {
             symb.draw(context, pos.clone(), scale);
         }
-        //self.lib[1].draw(context, pos, scale);
         context.stroke();
     }
 }
