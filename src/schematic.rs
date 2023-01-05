@@ -254,18 +254,33 @@ impl Text {
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
-        // todo : move pos based on diam
-        let angle = pos.a + self.pos.a;
-        context.move_to((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
+        let angle = (self.pos.a) / 180.0 * f64::consts::PI;
+        context.translate((self.pos.x) * scale, (self.pos.y) * scale);
         context.set_font(format!("{}px monospace", (1.8 * scale) as i32).as_str());
-        for (index, newline) in self.text.split("\\n").enumerate() {
-            context.fill_text(
-                newline,
-                (self.pos.x) * scale + pos.x,
-                (self.pos.y + (1.8 * index as f64) ) * scale + pos.y,
-            );
+        if angle > f64::consts::PI*0.5 && angle <= f64::consts::PI*1.5 {
+            context.rotate(-angle-f64::consts::PI); // half rotate to flip text    
+            context.set_text_align("right");
+            for (index, newline) in self.text.split("\\n").enumerate() {
+                context.fill_text(
+                    newline,
+                    0.0,
+                    (1.8 * index as f64) * scale,
+                );
+            }
+            context.rotate(f64::consts::PI); // finish rotation
+        } else {
+            context.rotate(-angle); // why inverse?
+            context.set_text_align("left");
+            for (index, newline) in self.text.split("\\n").enumerate() {
+                context.fill_text(
+                    newline,
+                    0.0,
+                    (1.8 * index as f64) * scale,
+                );
+            }
         }
-
+        context.rotate(angle);
+        context.translate(-((self.pos.x) * scale), -((self.pos.y) * scale));
     }
 }
 
@@ -403,6 +418,7 @@ pub struct Property {
     pub key: String,
     pub value: String,
     pub id: i32,
+    pub show: bool,
     pub pos: Point,
     // todo : effect
 }
@@ -414,8 +430,23 @@ impl Property {
             key: "".to_string(),
             value: "".to_string(),
             id: 0,
+            show: false,
             pos: Point::blank(),
         }
+    }
+
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
+        if !self.show {return;} // don't continue if hiden
+        // todo : inherit from Text rendering
+        // todo : move pos based on diam
+        let angle = pos.a + self.pos.a;
+        context.move_to((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
+        context.set_font(format!("{}px monospace", (1.8 * scale) as i32).as_str());
+        context.fill_text(
+            self.key.as_str(),
+            (self.pos.x) * scale + pos.x,
+            (self.pos.y + (1.8 * 1 as f64) ) * scale + pos.y,
+        );
     }
 }
 
