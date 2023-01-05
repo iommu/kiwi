@@ -436,7 +436,7 @@ impl Property {
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
-        // if !self.show {return;} // don't continue if hiden
+        if !self.show {return;} // don't continue if hiden
         // todo : inherit from Text rendering
         let angle = (self.pos.a) / 180.0 * f64::consts::PI;
         context.translate((self.pos.x) * scale, (self.pos.y) * scale);
