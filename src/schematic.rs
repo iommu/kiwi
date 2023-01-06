@@ -1,7 +1,7 @@
+use js_sys::Array;
 use std::collections::HashMap;
 use std::f64;
 use std::fs;
-use js_sys::Array;
 use symbolic_expressions;
 use symbolic_expressions::Sexp;
 use wasm_bindgen::describe::F64;
@@ -96,11 +96,10 @@ impl Wire {
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         // draw pos to pos using stroke
-        if self.poss.is_empty() {return;} // ensure vec exists
-        context.move_to(
-            (self.poss[0].x) * scale,
-            (self.poss[0].y) * scale,
-        );
+        if self.poss.is_empty() {
+            return;
+        } // ensure vec exists
+        context.move_to((self.poss[0].x) * scale, (self.poss[0].y) * scale);
         for point in &self.poss {
             context.line_to((point.x) * scale, (point.y) * scale);
         }
@@ -132,27 +131,28 @@ impl Rect {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         // draw pos to pos using stroke
+
         context.move_to(
-            (self.poss.0.x) * scale + pos.x,
-            (self.poss.0.y) * scale + pos.y,
+            self.poss.0.x * scale,
+            self.poss.0.y * scale,
         );
 
         match self.fill {
             FillType::background => {
                 context.set_fill_style(&JsValue::from("orange"));
                 context.fill_rect(
-                    (self.poss.0.x) * scale + pos.x,
-                    (self.poss.0.y) * scale + pos.y,
+                    self.poss.0.x * scale,
+                    self.poss.0.y * scale,
                     (self.poss.1.x - self.poss.0.x) * scale,
                     (self.poss.1.y - self.poss.0.y) * scale, //todo : why?
                 );
             }
             _ => {
                 context.rect(
-                    (self.poss.0.x) * scale + pos.x,
-                    (self.poss.0.y) * scale + pos.y,
+                    (self.poss.0.x) * scale,
+                    (self.poss.0.y) * scale,
                     (self.poss.1.x - self.poss.0.x) * scale,
                     (self.poss.1.y - self.poss.0.y) * scale, //todo : why?
                 );
@@ -181,16 +181,16 @@ impl Circ {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         // draw pos to pos using stroke
         context.move_to(
-            (self.pos.x + self.radius) * scale + pos.x,
-            (self.pos.y) * scale + pos.y,
+            (self.pos.x + self.radius) * scale,
+            self.pos.y * scale,
         );
         context.arc(
-            (self.pos.x) * scale + pos.x,
-            (self.pos.y) * scale + pos.y,
-            (self.radius) * scale,
+            self.pos.x * scale,
+            self.pos.y * scale,
+            self.radius * scale,
             0.0,
             f64::consts::PI * 2.0,
         );
@@ -219,12 +219,12 @@ impl Junction {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         // todo : move pos based on diam
-        context.move_to((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
+        context.move_to(self.pos.x * scale, self.pos.y * scale);
         context.arc(
-            (self.pos.x) * scale + pos.x,
-            (self.pos.y) * scale + pos.y,
+            self.pos.x * scale,
+            self.pos.y * scale,
             ((self.diameter + 0.2) * 1.0) * scale,
             0.0,
             f64::consts::PI * 2.0,
@@ -253,30 +253,22 @@ impl Text {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
-        let angle = (self.pos.a) / 180.0 * f64::consts::PI;
-        context.translate((self.pos.x) * scale, (self.pos.y) * scale);
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
+        let angle = self.pos.a / 180.0 * f64::consts::PI;
+        context.translate(self.pos.x* scale, self.pos.y * scale);
         context.set_font(format!("{}px monospace", (1.8 * scale) as i32).as_str());
-        if angle > f64::consts::PI*0.5 && angle <= f64::consts::PI*1.5 {
-            context.rotate(-angle-f64::consts::PI); // half rotate to flip text    
+        if angle > f64::consts::PI * 0.5 && angle <= f64::consts::PI * 1.5 {
+            context.rotate(-angle - f64::consts::PI); // half rotate to flip text
             context.set_text_align("right");
             for (index, newline) in self.text.split("\\n").enumerate() {
-                context.fill_text(
-                    newline,
-                    0.0,
-                    (1.8 * index as f64) * scale,
-                );
+                context.fill_text(newline, 0.0, (1.8 * index as f64) * scale);
             }
             context.rotate(f64::consts::PI); // finish rotation
         } else {
             context.rotate(-angle); // why inverse?
             context.set_text_align("left");
             for (index, newline) in self.text.split("\\n").enumerate() {
-                context.fill_text(
-                    newline,
-                    0.0,
-                    (1.8 * index as f64) * scale,
-                );
+                context.fill_text(newline, 0.0, (1.8 * index as f64) * scale);
             }
         }
         context.rotate(angle);
@@ -309,32 +301,33 @@ impl Polyline {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         // draw pos to pos using stroke
-        if self.poss.is_empty() {return;} // break if none
+        if self.poss.is_empty() {
+            return;
+        } // break if none
         context.move_to(
-            (self.poss[0].x) * scale + pos.x,
-            (self.poss[0].y) * scale + pos.y,
+            self.poss[0].x * scale,
+            self.poss[0].y* scale,
         );
         for point in &self.poss {
             match self.stroke.format {
                 StrokeFormat::default => {
-
                     context.set_line_dash(&js_sys::Array::new());
-
-                },
+                }
                 _ => {
                     let x = js_sys::Array::new();
                     x.push(&JsValue::from_f64(2.0 * scale));
                     x.push(&JsValue::from_f64(2.0 * scale));
-                    context.set_line_dash(&x);                },
+                    context.set_line_dash(&x);
+                }
             }
-    
+
             // context.set_stroke_style(&JsValue::from(format!(
             //     "rgba({}, {}, {}, {})",
             //     self.stroke.color.0, self.stroke.color.0, self.stroke.color.2, 255
             // )));
-            context.line_to((point.x) * scale + pos.x, (point.y) * scale + pos.y);
+            context.line_to(point.x * scale, point.y* scale);
         }
     }
 }
@@ -357,7 +350,7 @@ impl Arc {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         // draw pos to pos using stroke
 
         // triiggg
@@ -368,12 +361,12 @@ impl Arc {
         let angle_start = f64::atan2(self.poss.0.y - self.poss.1.y, self.poss.0.x - self.poss.1.x);
         let angle_stop = f64::atan2(self.poss.2.y - self.poss.1.y, self.poss.2.x - self.poss.1.x);
         context.move_to(
-            (self.poss.0.x) * scale + pos.x,
-            (self.poss.0.y) * scale + pos.y,
+            self.poss.0.x * scale,
+            self.poss.0.y * scale,
         );
         context.arc(
-            (self.poss.1.x) * scale + pos.x,
-            (self.poss.1.y) * scale + pos.y,
+            self.poss.1.x * scale,
+            self.poss.1.y* scale,
             radius * scale,
             angle_start,
             angle_stop,
@@ -399,24 +392,24 @@ impl Noconnect {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         // draws an "x"
         let size = 1.0;
         context.move_to(
-            (self.pos.x - size) * scale + pos.x,
-            (self.pos.y - size) * scale + pos.y,
+            (self.pos.x - size) * scale,
+            (self.pos.y - size) * scale,
         );
         context.line_to(
-            (self.pos.x + size) * scale + pos.x,
-            (self.pos.y + size) * scale + pos.y,
+            (self.pos.x + size) * scale,
+            (self.pos.y + size) * scale,
         );
         context.move_to(
-            (self.pos.x - size) * scale + pos.x,
-            (self.pos.y + size) * scale + pos.y,
+            (self.pos.x - size) * scale,
+            (self.pos.y + size) * scale,
         );
         context.line_to(
-            (self.pos.x + size) * scale + pos.x,
-            (self.pos.y - size) * scale + pos.y,
+            (self.pos.x + size) * scale,
+            (self.pos.y - size) * scale,
         );
     }
 }
@@ -443,32 +436,26 @@ impl Property {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
-        if !self.show {return;} // don't continue if hiden
-        // todo : inherit from Text rendering
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
+        if !self.show {
+            return;
+        } // don't continue if hiden
+          // todo : inherit from Text rendering
         let angle = (self.pos.a) / 180.0 * f64::consts::PI;
-        context.translate((self.pos.x) * scale, (self.pos.y) * scale);
+        context.translate(self.pos.x * scale, self.pos.y * scale);
         context.set_font(format!("{}px monospace", (1.8 * scale) as i32).as_str());
-        if angle > f64::consts::PI*0.5 && angle <= f64::consts::PI*1.5 {
-            context.rotate(-angle-f64::consts::PI); // half rotate to flip text    
+        if angle > f64::consts::PI * 0.5 && angle <= f64::consts::PI * 1.5 {
+            context.rotate(-angle - f64::consts::PI); // half rotate to flip text
             context.set_text_align("right");
-            context.fill_text(
-                    self.key.as_str(),
-                    0.0,
-                    (1.8) * scale,
-                );
+            context.fill_text(self.key.as_str(), 0.0, (1.8) * scale);
             context.rotate(f64::consts::PI); // finish rotation
         } else {
             context.rotate(-angle); // why inverse?
             context.set_text_align("left");
-                context.fill_text(
-                    self.key.as_str(),
-                    0.0,
-                    (1.8) * scale,
-                );
+            context.fill_text(self.key.as_str(), 0.0, (1.8) * scale);
         }
         context.rotate(angle);
-        context.translate(-((self.pos.x) * scale), -((self.pos.y) * scale));
+        context.translate(-(self.pos.x * scale), -(self.pos.y * scale));
     }
 }
 
@@ -492,14 +479,17 @@ impl Pin {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
-        let angle = (self.pos.a + pos.a) / 180.0 * f64::consts::PI;
-        context.translate((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
+        let angle = (self.pos.a) / 180.0 * f64::consts::PI;
+        context.translate(self.pos.x * scale, self.pos.y * scale);
         context.rotate(angle);
         context.move_to(0.0, 0.0);
-        context.line_to((self.len) * scale, 0.0);
+        context.line_to(self.len * scale, 0.0);
         context.rotate(-angle);
-        context.translate(-((self.pos.x) * scale + pos.x), -((self.pos.y) * scale + pos.y));
+        context.translate(
+            -(self.pos.x * scale),
+            -(self.pos.y * scale),
+        );
     }
 }
 
@@ -525,21 +515,21 @@ impl Symbol {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         for line in &self.lines {
-            line.draw(context, pos.clone(), scale);
+            line.draw(context, scale);
         }
         for arc in &self.arcs {
-            arc.draw(context, pos.clone(), scale);
+            arc.draw(context, scale);
         }
         for pin in &self.pins {
-            pin.draw(context, pos.clone(), scale);
+            pin.draw(context, scale);
         }
         for rect in &self.rects {
-            rect.draw(context, pos.clone(), scale);
+            rect.draw(context, scale);
         }
         for circ in &self.circs {
-            circ.draw(context, pos.clone(), scale);
+            circ.draw(context, scale);
         }
     }
 }
@@ -564,9 +554,9 @@ impl SymbolTemp {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         for symb in &self.symbs {
-            symb.draw(context, pos.clone(), scale)
+            symb.draw(context, scale)
         }
     }
 }
@@ -593,21 +583,33 @@ impl SymbolInst {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         if self.parent.is_some() {
-            let angle = (self.pos.a + pos.a) / 180.0 * f64::consts::PI;
-            context.translate((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
-            context.scale(-(self.mirror.0 as i32 as f64 * 2.0 - 1.0), (self.mirror.1 as i32 as f64 * 2.0 - 1.0));
+            let angle = (self.pos.a) / 180.0 * f64::consts::PI;
+            context.translate(self.pos.x * scale , self.pos.y * scale);
+            context.scale(
+                -(self.mirror.0 as i32 as f64 * 2.0 - 1.0),
+                (self.mirror.1 as i32 as f64 * 2.0 - 1.0),
+            );
             context.rotate(angle);
-            self.parent.as_ref().unwrap().draw(context, Point::blank(), scale);
+            self.parent
+                .as_ref()
+                .unwrap()
+                .draw(context, scale);
 
             for prop in &self.props {
-                prop.draw(context, pos.clone(), scale);
+                prop.draw(context, scale);
             }
 
             context.rotate(-angle);
-            context.scale(-(self.mirror.0 as i32 as f64 * 2.0 - 1.0), (self.mirror.1 as i32 as f64 * 2.0 - 1.0));
-            context.translate(-((self.pos.x) * scale + pos.x), -((self.pos.y) * scale + pos.y));
+            context.scale(
+                -(self.mirror.0 as i32 as f64 * 2.0 - 1.0),
+                (self.mirror.1 as i32 as f64 * 2.0 - 1.0),
+            );
+            context.translate(
+                -(self.pos.x * scale),
+                -(self.pos.y * scale),
+            );
         }
     }
 }
@@ -645,49 +647,27 @@ impl Label {
 
         let size = 1.0; // todo global size?
 
-
         let angle = (self.pos.a) / 180.0 * f64::consts::PI;
         context.translate((self.pos.x) * scale, (self.pos.y) * scale);
 
         context.set_font(format!("{}px monospace", (1.8 * scale) as i32).as_str());
-        if angle > f64::consts::PI*0.5 && angle <= f64::consts::PI*1.5 {
-            context.rotate(-angle-f64::consts::PI); // half rotate to flip text    
+        if angle > f64::consts::PI * 0.5 && angle <= f64::consts::PI * 1.5 {
+            context.rotate(-angle - f64::consts::PI); // half rotate to flip text
             context.set_text_align("right");
-            context.fill_text(
-                self.id.as_str(),
-                -(size * 2.5) * scale,
-                (1.0) * scale,
-            );
+            context.fill_text(self.id.as_str(), -(size * 2.5) * scale, (1.0) * scale);
             context.rotate(f64::consts::PI); // finish rotation
         } else {
             context.rotate(-angle); // why inverse?
             context.set_text_align("left");
-            context.fill_text(
-                self.id.as_str(),
-                (size * 2.5) * scale,
-                (1.0) * scale,
-            );
-
+            context.fill_text(self.id.as_str(), (size * 2.5) * scale, (1.0) * scale);
         }
 
         // draw frame
         context.move_to(0.0, 0.0);
-        context.line_to(
-            (size) * scale,
-            (size) * scale,
-        );
-        context.line_to(
-            (size * 2.0) * scale,
-            (size) * scale,
-        );
-        context.line_to(
-            (size * 2.0) * scale,
-            -(size) * scale,
-        );
-        context.line_to(
-            (size) * scale,
-            -(size) * scale,
-        );
+        context.line_to((size) * scale, (size) * scale);
+        context.line_to((size * 2.0) * scale, (size) * scale);
+        context.line_to((size * 2.0) * scale, -(size) * scale);
+        context.line_to((size) * scale, -(size) * scale);
         context.line_to(0.0, 0.0);
         context.rotate(angle);
         context.translate(-((self.pos.x) * scale), -((self.pos.y) * scale));
@@ -927,7 +907,8 @@ impl Parser {
                     }
                     (true, "stroke") => {
                         circ.stroke = p_stroke(obj);
-                    }                    _ => {
+                    }
+                    _ => {
                         //println!("{:?}", name);
                     }
                 }
@@ -1066,7 +1047,6 @@ impl Parser {
                     // todo : (power)
                     // todo : pin_names
                     // todo : offset
-                    // todo : in_bom
                     // todo : on_board
                     _ => {
                         //println!("{:?}", name);
@@ -1122,7 +1102,7 @@ impl Parser {
                             "x" => (false, true),
                             "y" => (true, false), // todo why x/y swapped?
                             "xy" | "yx" => (true, true),
-                            _ => (false, false)
+                            _ => (false, false),
                         }
                     }
                     // todo : (power)
@@ -1275,22 +1255,22 @@ impl Schematic {
             wire.draw(context, scale);
         }
         for junc in &self.juncs {
-            junc.draw(context, pos.clone(), scale);
+            junc.draw(context, scale);
         }
         for text in &self.texts {
-            text.draw(context, pos.clone(), scale);
+            text.draw(context, scale);
         }
         for poly in &self.polys {
-            poly.draw(context, pos.clone(), scale);
+            poly.draw(context, scale);
         }
         for nocon in &self.nocons {
-            nocon.draw(context, pos.clone(), scale);
+            nocon.draw(context, scale);
         }
         for label in &self.labels {
             label.draw(context, scale);
         }
         for symb in &self.symbs {
-            symb.draw(context, pos.clone(), scale);
+            symb.draw(context, scale);
         }
         context.stroke();
     }
