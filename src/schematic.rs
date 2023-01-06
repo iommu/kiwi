@@ -811,7 +811,6 @@ impl Parser {
                     (true, "stroke") => {
                         poly.stroke = p_stroke(obj);
                     }
-                    // todo : stroke
                     _ => {
                         //println!("{:?}", name);
                     }
@@ -838,7 +837,9 @@ impl Parser {
                     (true, "uuid") => {
                         arc.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
                     }
-                    // todo : stroke
+                    (true, "stroke") => {
+                        arc.stroke = p_stroke(obj);
+                    }
                     _ => {
                         //println!("{:?}", name);
                     }
@@ -861,7 +862,6 @@ impl Parser {
                         let xy = obj.list().unwrap();
                         pin.len = xy[1].string().unwrap().parse::<f64>().unwrap();
                     }
-                    // todo : stroke
                     _ => {
                         //println!("{:?}", name);
                     }
@@ -894,8 +894,9 @@ impl Parser {
                     (true, "uuid") => {
                         rect.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
                     }
-
-                    // todo : stroke
+                    (true, "stroke") => {
+                        rect.stroke = p_stroke(obj);
+                    }
                     _ => {
                         //println!("{:?}", name);
                     }
@@ -924,8 +925,9 @@ impl Parser {
                     (true, "uuid") => {
                         circ.uuid = obj.list().unwrap()[1].string().unwrap().clone();
                     }
-                    // todo : stroke
-                    _ => {
+                    (true, "stroke") => {
+                        circ.stroke = p_stroke(obj);
+                    }                    _ => {
                         //println!("{:?}", name);
                     }
                 }
@@ -945,7 +947,7 @@ impl Parser {
                     (true, "uuid") => {
                         text.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
                     }
-                    // todo : stroke
+                    // todo : effects
                     (false, _) => {
                         text.text = obj.string().unwrap().clone();
                     }
@@ -972,7 +974,9 @@ impl Parser {
                     (true, "uuid") => {
                         wire.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
                     }
-                    // todo : stroke
+                    (true, "stroke") => {
+                        wire.stroke = p_stroke(obj);
+                    }
                     _ => {
                         //println!("{:?}", name);
                     }
@@ -994,7 +998,6 @@ impl Parser {
                     (true, "uuid") => {
                         nconn.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
                     }
-                    // todo : stroke
                     _ => { // should be string
                          //println!("{:?}", name);
                     }
@@ -1026,7 +1029,7 @@ impl Parser {
                     (true, "uuid") => {
                         label.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
                     }
-                    // todo : stroke
+                    // todo : effects
                     _ => { // should be string
                          //println!("{:?}", name);
                     }
