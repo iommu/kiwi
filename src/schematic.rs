@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::f64;
 use std::fs;
+use js_sys::Array;
 use symbolic_expressions;
 use symbolic_expressions::Sexp;
 use wasm_bindgen::describe::F64;
@@ -323,12 +324,17 @@ impl Polyline {
             );
             match self.stroke.format {
                 StrokeFormat::default => {
-                    context.set_line_dash(&JsValue::from("[500, 1500]"));
-                    console_log!("LINE DASH");
+
+                    context.set_line_dash(&js_sys::Array::new());
+
                 },
-                _ => {context.set_line_dash(&JsValue::from("[500, 500]"));},
+                _ => {
+                    let x = js_sys::Array::new();
+                    x.push(&JsValue::from_f64(2.0 * scale));
+                    x.push(&JsValue::from_f64(2.0 * scale));
+                    context.set_line_dash(&x);                },
             }
-            console_log!("line type {}", context.get_line_dash().to_string());
+    
             // context.set_stroke_style(&JsValue::from(format!(
             //     "rgba({}, {}, {}, {})",
             //     self.stroke.color.0, self.stroke.color.0, self.stroke.color.2, 255
