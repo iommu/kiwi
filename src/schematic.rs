@@ -321,11 +321,18 @@ impl Polyline {
                 (point.x) * scale + pos.x,
                 (point.y) * scale + pos.y
             );
-            context.set_line_dash(&JsValue::from(""));
-            context.set_stroke_style(&JsValue::from(format!(
-                "rgba({}, {}, {}, {})",
-                self.stroke.color.0, self.stroke.color.0, self.stroke.color.2, 255
-            )));
+            match self.stroke.format {
+                StrokeFormat::default => {
+                    context.set_line_dash(&JsValue::from("[500, 1500]"));
+                    console_log!("LINE DASH");
+                },
+                _ => {context.set_line_dash(&JsValue::from("[500, 500]"));},
+            }
+            console_log!("line type {}", context.get_line_dash().to_string());
+            // context.set_stroke_style(&JsValue::from(format!(
+            //     "rgba({}, {}, {}, {})",
+            //     self.stroke.color.0, self.stroke.color.0, self.stroke.color.2, 255
+            // )));
             context.line_to((point.x) * scale + pos.x, (point.y) * scale + pos.y);
         }
     }
@@ -766,6 +773,7 @@ impl Parser {
                             .unwrap()
                     }
                     (true, "type") => {
+                        console_log!("LINE FORMAT {}", obj.list().unwrap()[1].string().unwrap().as_str());
                         stroke.format = match obj.list().unwrap()[1].string().unwrap().as_str() {
                             "dash" => StrokeFormat::dash,
                             _ => StrokeFormat::default,
