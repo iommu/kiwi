@@ -96,7 +96,7 @@ impl Wire {
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         // draw pos to pos using stroke
-        // todo : ensure that vector exists
+        if self.poss.is_empty() {return;} // ensure vec exists
         context.move_to(
             (self.poss[0].x) * scale,
             (self.poss[0].y) * scale,
