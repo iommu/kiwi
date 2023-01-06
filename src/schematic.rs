@@ -311,6 +311,7 @@ impl Polyline {
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
         // draw pos to pos using stroke
+        if self.poss.is_empty() {return;} // break if none
         context.move_to(
             (self.poss[0].x) * scale + pos.x,
             (self.poss[0].y) * scale + pos.y,
