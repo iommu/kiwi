@@ -182,7 +182,6 @@ impl Circ {
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
-        console_log!("DRAWING CIRC");
         // draw pos to pos using stroke
         context.move_to(
             (self.pos.x + self.radius) * scale + pos.x,
@@ -317,11 +316,6 @@ impl Polyline {
             (self.poss[0].y) * scale + pos.y,
         );
         for point in &self.poss {
-            console_log!(
-                "drawing line : {}:{}",
-                (point.x) * scale + pos.x,
-                (point.y) * scale + pos.y
-            );
             match self.stroke.format {
                 StrokeFormat::default => {
 
@@ -531,7 +525,6 @@ impl Symbol {
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, pos: Point, scale: f64) {
-        console_log!("drawing {}", self.id);
         for line in &self.lines {
             line.draw(context, pos.clone(), scale);
         }
@@ -605,7 +598,6 @@ impl SymbolInst {
             context.translate((self.pos.x) * scale + pos.x, (self.pos.y) * scale + pos.y);
             context.scale(-(self.mirror.0 as i32 as f64 * 2.0 - 1.0), (self.mirror.1 as i32 as f64 * 2.0 - 1.0));
             context.rotate(angle);
-            // console_log!("id {} mirror {}:{}", self.id, (self.mirror.0 as i32 as f64 * 2.0 - 1.0), (self.mirror.1 as i32 as f64 * 2.0 - 1.0));
             self.parent.as_ref().unwrap().draw(context, Point::blank(), scale);
 
             for prop in &self.props {
@@ -779,7 +771,6 @@ impl Parser {
                             .unwrap()
                     }
                     (true, "type") => {
-                        console_log!("LINE FORMAT {}", obj.list().unwrap()[1].string().unwrap().as_str());
                         stroke.format = match obj.list().unwrap()[1].string().unwrap().as_str() {
                             "dash" => StrokeFormat::dash,
                             _ => StrokeFormat::default,
@@ -797,15 +788,6 @@ impl Parser {
                     _ => {}
                 }
             }
-            console_log!(
-                "stroke : w {} t {} c {},{},{},{}",
-                stroke.width,
-                0,
-                stroke.color.0,
-                stroke.color.1,
-                stroke.color.2,
-                stroke.color.3
-            );
             stroke
         };
         let p_poly = |obj: &Sexp| -> Polyline {
@@ -1087,7 +1069,6 @@ impl Parser {
                     }
                 }
             }
-            console_log!("new symbol : {}", symb.id);
             //
             symb
         };
@@ -1227,7 +1208,6 @@ impl Parser {
                 (true, "hierarchical_label") => schem.labels.push(p_label(obj)),
                 (true, "symbol") => {
                     let mut symb = p_symb_inst(obj);
-                    console_log!("{}", symb.id);
                     symb.parent = Some(schem.lib.get(&symb.id).unwrap().clone());
                     schem.symbs.push(symb);
                 }
