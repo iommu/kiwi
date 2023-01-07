@@ -116,8 +116,8 @@ impl FillType {
     fn begin(&self, context: &web_sys::CanvasRenderingContext2d, color: &JsValue) {
         // todo uses theme instead of color
         context.stroke();
-        context.begin_path();
         context.set_fill_style(&color);
+        context.begin_path();
     }
 
     fn end(&self, context: &web_sys::CanvasRenderingContext2d) {
@@ -167,6 +167,7 @@ impl Rect {
             (self.poss.1.x - self.poss.0.x) * scale,
             (self.poss.1.y - self.poss.0.y) * scale, //todo : why?
         );
+
         self.fill.end(context);
     }
 }
@@ -203,6 +204,7 @@ impl Circ {
             0.0,
             f64::consts::PI * 2.0,
         );
+
         self.fill.end(context);
     }
 }
@@ -300,6 +302,7 @@ impl Effect {
 pub struct Polyline {
     pub poss: Vec<Point>,
     pub stroke: Stroke,
+    pub fill: FillType,
     pub uuid: UUID,
 }
 
@@ -308,11 +311,13 @@ impl Polyline {
         Polyline {
             poss: Vec::<Point>::new(),
             stroke: Stroke::blank(),
+            fill: FillType::None,
             uuid: "".to_string(),
         }
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
+        self.fill.begin(context, &JsValue::from("black"));
         // draw pos to pos using stroke
         if self.poss.is_empty() {
             return;
@@ -337,6 +342,7 @@ impl Polyline {
             // )));
             context.line_to(point.x * scale, point.y * scale);
         }
+        self.fill.end(context);
     }
 }
 
@@ -344,7 +350,7 @@ impl Polyline {
 pub struct Arc {
     pub poss: (Point, Point, Point), /* start, mid, end*/
     pub stroke: Stroke,
-    pub fill: bool,
+    pub fill: FillType,
     pub uuid: UUID,
 } // todo
 
@@ -353,14 +359,15 @@ impl Arc {
         Arc {
             poss: (Point::blank(), Point::blank(), Point::blank()),
             stroke: Stroke::blank(),
-            fill: false,
+            fill: FillType::None,
             uuid: "".to_string(),
         }
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         // draw pos to pos using stroke
-        // todo wrong method of drawing arc (center != center)
+        self.fill.begin(context, &JsValue::from("black"));
+
         {
             let line1_angle =
                 f64::atan2(self.poss.1.y - self.poss.0.y, self.poss.1.x - self.poss.0.x)
@@ -419,6 +426,7 @@ impl Arc {
             );
 
             // console_log!("angle angle : {},{} : r {}", pos2.x, pos2.y, radius);
+            self.fill.end(context);
         }
 
         // triiggg
@@ -760,7 +768,18 @@ impl Parser {
 
             return Point { x: x, y: y, a: a };
         };
-
+        let p_fill = |obj: &Sexp| -> FillType {
+            match obj.list().unwrap()[1].list().unwrap()[1]
+                .string()
+                .unwrap()
+                .as_str()
+            {
+                "none" => FillType::None,
+                "outline" => FillType::Outline,
+                "background" => FillType::Background,
+                _ => FillType::None,
+            }
+        };
         let p_junc = |obj: &Sexp| -> Junction {
             let mut junction = Junction::blank();
             //
@@ -842,6 +861,9 @@ impl Parser {
                     (true, "stroke") => {
                         poly.stroke = p_stroke(obj);
                     }
+                    (true, "fill") => {
+                        poly.fill = p_fill(obj);
+                    }
                     _ => {
                         //println!("{:?}", name);
                     }
@@ -870,6 +892,9 @@ impl Parser {
                     }
                     (true, "stroke") => {
                         arc.stroke = p_stroke(obj);
+                    }
+                    (true, "fill") => {
+                        arc.fill = p_fill(obj);
                     }
                     _ => {
                         //println!("{:?}", name);
@@ -913,14 +938,7 @@ impl Parser {
                         rect.poss.1 = p_pos(obj);
                     }
                     (true, "fill") => {
-                        rect.fill = match obj.list().unwrap()[1].list().unwrap()[1]
-                            .string()
-                            .unwrap()
-                            .as_str()
-                        {
-                            "background" => FillType::Background,
-                            _ => FillType::None,
-                        };
+                        rect.fill = p_fill(obj);
                     }
                     (true, "uuid") => {
                         rect.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
@@ -934,18 +952,6 @@ impl Parser {
                 }
             }
             rect
-        };
-        let p_fill = |obj: &Sexp| -> FillType {
-            match obj.list().unwrap()[1].list().unwrap()[1]
-                .string()
-                .unwrap()
-                .as_str()
-            {
-                "none" => FillType::None,
-                "outline" => FillType::Outline,
-                "background" => FillType::Background,
-                _ => FillType::None,
-            }
         };
         let p_circ = |obj: &Sexp| -> Circ {
             let mut circ = Circ::blank();
