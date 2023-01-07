@@ -8,6 +8,9 @@ use wasm_bindgen::describe::F64;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
+use crate::theme::Theme;
+
+
 #[wasm_bindgen]
 extern "C" {
     // Use `js_namespace` here to bind `console.log(..)` instead of just
@@ -352,6 +355,8 @@ impl Arc {
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         // draw pos to pos using stroke
+        // todo wrong method of drawing arc (center != center)
+
 
         // triiggg
         let radius = f64::sqrt(
