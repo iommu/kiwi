@@ -619,24 +619,28 @@ impl SymbolInst {
 }
 
 #[derive(Debug, Clone)]
+pub enum Shape {
+    Heir,
+    Global,
+    Local,
+    Noconn,
+}
+
+
+#[derive(Debug, Clone)]
 pub struct Label {
     pub id: String,
-    pub shape: u8, // todo : enum
+    pub shape: Shape,
     pub pos: Point,
     // todo : effects
     pub uuid: UUID,
 }
 
-// types : 0x00 = heir:
-// types : 0x10 = glob:
-// types : 0x20 = local:
-// types : 0x30 = noconn:
-
 impl Label {
     fn blank() -> Label {
         Label {
             id: "".to_string(),
-            shape: 0,
+            shape: Shape::Heir,
             pos: Point::blank(),
             uuid: "".to_string(),
         }
@@ -645,34 +649,34 @@ impl Label {
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         // draws an label based on label type
         // todo : type based rendering
-        if (self.shape != 0xf0) {
-            return;
-        }
-
         let size = 1.0; // todo global size?
-
         let angle = (self.pos.a) / 180.0 * f64::consts::PI;
         context.translate((self.pos.x) * scale, (self.pos.y) * scale);
+        context.rotate(-angle); // why inverse?
+        match self.shape {
+            Shape::Heir => {    
+                context.set_font(format!("{}px monospace", (1.8 * scale) as i32).as_str());
+                if angle > f64::consts::PI * 0.5 && angle <= f64::consts::PI * 1.5 {
+                    context.rotate(-f64::consts::PI); // half rotate to flip text
+                    context.set_text_align("right");
+                    context.fill_text(self.id.as_str(), -(size * 2.5) * scale, (1.0) * scale);
+                    context.rotate(f64::consts::PI); // finish rotation
+                } else {
+                    context.set_text_align("left");
+                    context.fill_text(self.id.as_str(), (size * 2.5) * scale, (1.0) * scale);
+                }
+        
+                // draw frame
+                context.move_to(0.0, 0.0);
+                context.line_to((size) * scale, (size) * scale);
+                context.line_to((size * 2.0) * scale, (size) * scale);
+                context.line_to((size * 2.0) * scale, -(size) * scale);
+                context.line_to((size) * scale, -(size) * scale);
+                context.line_to(0.0, 0.0);
 
-        context.set_font(format!("{}px monospace", (1.8 * scale) as i32).as_str());
-        if angle > f64::consts::PI * 0.5 && angle <= f64::consts::PI * 1.5 {
-            context.rotate(-angle - f64::consts::PI); // half rotate to flip text
-            context.set_text_align("right");
-            context.fill_text(self.id.as_str(), -(size * 2.5) * scale, (1.0) * scale);
-            context.rotate(f64::consts::PI); // finish rotation
-        } else {
-            context.rotate(-angle); // why inverse?
-            context.set_text_align("left");
-            context.fill_text(self.id.as_str(), (size * 2.5) * scale, (1.0) * scale);
+            }
+            _ => {}
         }
-
-        // draw frame
-        context.move_to(0.0, 0.0);
-        context.line_to((size) * scale, (size) * scale);
-        context.line_to((size * 2.0) * scale, (size) * scale);
-        context.line_to((size * 2.0) * scale, -(size) * scale);
-        context.line_to((size) * scale, -(size) * scale);
-        context.line_to(0.0, 0.0);
         context.rotate(angle);
         context.translate(-((self.pos.x) * scale), -((self.pos.y) * scale));
     }
@@ -1002,9 +1006,9 @@ impl Parser {
                         label.id = obj.string().unwrap().clone();
                     }
                     (true, "shape") => {
-                        match label_name {
-                            "hierarchical_label" => label.shape = 0xf0,
-                            _ => {}
+                        label.shape = match label_name {
+                            "hierarchical_label" => Shape::Heir,
+                            _ => Shape::Local,
                         }
                         // todo shape = input...
                     }
