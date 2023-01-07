@@ -1203,7 +1203,6 @@ pub struct Schematic {
     pub labels: Vec<Label>,
     pub lib: HashMap<String, SymbolTemp>,
     pub symbs: Vec<SymbolInst>,
-
     //
     pub version: i32,
 }
