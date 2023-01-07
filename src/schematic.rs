@@ -229,6 +229,7 @@ impl Junction {
             0.0,
             f64::consts::PI * 2.0,
         );
+        context.fill();
     }
 }
 
