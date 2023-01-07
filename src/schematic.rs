@@ -423,8 +423,8 @@ pub struct Property {
     pub value: String,
     pub id: i32,
     pub show: bool,
+    pub effect: Effect,
     pub pos: Point,
-    // todo : effect
 }
 
 impl Property {
@@ -435,6 +435,7 @@ impl Property {
             value: "".to_string(),
             id: 0,
             show: true,
+            effect: Effect::blank(),
             pos: Point::blank(),
         }
     }
@@ -1022,6 +1023,9 @@ impl Parser {
             //
             label
         };
+        let p_prop = |obj: &Sexp| -> Property {
+            Property::blank()
+        };
         let p_symb = |obj: &Sexp| -> Symbol {
             let mut symb = Symbol::blank();
             //
@@ -1083,15 +1087,13 @@ impl Parser {
                             prop.pos = p_pos(&props[4]);
                         }
                         if props.len() >= 6 && props[5].is_list() {
+                            // todo : effect
                             for obj in props[5].list().unwrap() {
                                 if obj.is_string() && obj.string().unwrap().as_str() == "hide" {
                                     prop.show = false;
                                 }
                             }
                         }
-                        // todo : effect
-                        // todo : "at" parser
-                        // todo : pos => pos
                         symb.props.push(prop);
                     }
                     (true, "uuid") => {
@@ -1251,7 +1253,6 @@ impl Schematic {
             .unwrap()
             .dyn_into::<web_sys::CanvasRenderingContext2d>()
             .unwrap();
-        context.clear_rect(0.0, 0.0, 640.0, 480.0);
         context.begin_path();
         let pos = Point::blank();
         for wire in &self.wires {
