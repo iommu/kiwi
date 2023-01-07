@@ -7,7 +7,6 @@ use wasm_bindgen::JsCast;
 
 use crate::theme::Theme;
 
-
 #[wasm_bindgen]
 extern "C" {
     // Use `js_namespace` here to bind `console.log(..)` instead of just
@@ -57,7 +56,7 @@ pub enum StrokeFormat {
     Dot,
     Default,
     Solid,
-} 
+}
 
 #[derive(Debug, Clone)]
 pub struct Stroke {
@@ -113,6 +112,32 @@ pub enum FillType {
     Background,
 }
 
+impl FillType {
+    fn begin(&self, context: &web_sys::CanvasRenderingContext2d, color: &JsValue) {
+        // todo uses theme instead of color
+        context.stroke();
+        context.begin_path();
+        context.set_fill_style(&color);
+    }
+
+    fn end(&self, context: &web_sys::CanvasRenderingContext2d) {
+        match self {
+            FillType::Background => {
+                context.fill();
+            }
+            FillType::Outline => {
+                context.fill();
+                context.stroke();
+            }
+            FillType::None => {
+                context.stroke();
+            }
+            _ => {}
+        }
+        context.begin_path();
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Rect {
     pub poss: (Point, Point),
@@ -133,31 +158,16 @@ impl Rect {
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         // draw pos to pos using stroke
+        self.fill.begin(context, &JsValue::from("orange"));
 
-        context.move_to(
-            self.poss.0.x * scale,
-            self.poss.0.y * scale,
+        context.move_to(self.poss.0.x * scale, self.poss.0.y * scale);
+        context.rect(
+            (self.poss.0.x) * scale,
+            (self.poss.0.y) * scale,
+            (self.poss.1.x - self.poss.0.x) * scale,
+            (self.poss.1.y - self.poss.0.y) * scale, //todo : why?
         );
-
-        match self.fill {
-            FillType::Background => {
-                context.set_fill_style(&JsValue::from("orange"));
-                context.fill_rect(
-                    self.poss.0.x * scale,
-                    self.poss.0.y * scale,
-                    (self.poss.1.x - self.poss.0.x) * scale,
-                    (self.poss.1.y - self.poss.0.y) * scale, //todo : why?
-                );
-            }
-            _ => {
-                context.rect(
-                    (self.poss.0.x) * scale,
-                    (self.poss.0.y) * scale,
-                    (self.poss.1.x - self.poss.0.x) * scale,
-                    (self.poss.1.y - self.poss.0.y) * scale, //todo : why?
-                );
-            }
-        }
+        self.fill.end(context);
     }
 }
 
@@ -166,7 +176,7 @@ pub struct Circ {
     pub pos: Point,
     pub radius: f64,
     pub stroke: Stroke,
-    pub fill: u8,
+    pub fill: FillType,
     pub uuid: UUID,
 }
 
@@ -176,17 +186,16 @@ impl Circ {
             pos: Point::blank(),
             radius: 0.0,
             stroke: Stroke::blank(),
-            fill: 0,
+            fill: FillType::None,
             uuid: "".to_string(),
         }
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
+        self.fill.begin(context, &JsValue::from("black"));
+
         // draw pos to pos using stroke
-        context.move_to(
-            (self.pos.x + self.radius) * scale,
-            self.pos.y * scale,
-        );
+        context.move_to((self.pos.x + self.radius) * scale, self.pos.y * scale);
         context.arc(
             self.pos.x * scale,
             self.pos.y * scale,
@@ -194,6 +203,7 @@ impl Circ {
             0.0,
             f64::consts::PI * 2.0,
         );
+        self.fill.end(context);
     }
 }
 
@@ -256,7 +266,7 @@ impl Text {
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         let angle = self.pos.a / 180.0 * f64::consts::PI;
-        context.translate(self.pos.x* scale, self.pos.y * scale);
+        context.translate(self.pos.x * scale, self.pos.y * scale);
         context.set_font(format!("{}px monospace", (1.8 * scale) as i32).as_str());
         if angle > f64::consts::PI * 0.5 && angle <= f64::consts::PI * 1.5 {
             context.rotate(-angle - f64::consts::PI); // half rotate to flip text
@@ -307,10 +317,7 @@ impl Polyline {
         if self.poss.is_empty() {
             return;
         } // break if none
-        context.move_to(
-            self.poss[0].x * scale,
-            self.poss[0].y* scale,
-        );
+        context.move_to(self.poss[0].x * scale, self.poss[0].y * scale);
         for point in &self.poss {
             match self.stroke.format {
                 StrokeFormat::Default => {
@@ -328,7 +335,7 @@ impl Polyline {
             //     "rgba({}, {}, {}, {})",
             //     self.stroke.color.0, self.stroke.color.0, self.stroke.color.2, 255
             // )));
-            context.line_to(point.x * scale, point.y* scale);
+            context.line_to(point.x * scale, point.y * scale);
         }
     }
 }
@@ -355,20 +362,32 @@ impl Arc {
         // draw pos to pos using stroke
         // todo wrong method of drawing arc (center != center)
         {
-            let line1_angle = f64::atan2(self.poss.1.y - self.poss.0.y, self.poss.1.x - self.poss.0.x) + f64::consts::PI/2.0;
-            let line2_angle = f64::atan2(self.poss.2.y - self.poss.1.y, self.poss.2.x - self.poss.1.x) + f64::consts::PI/2.0;
-            let line1_mid = Point{x: (self.poss.1.x + self.poss.0.x)/2.0, y: (self.poss.1.y + self.poss.0.y)/2.0, a: 0.0};
-            let line2_mid = Point{x: (self.poss.2.x + self.poss.1.x)/2.0, y: (self.poss.2.y + self.poss.1.y)/2.0, a: 0.0};
+            let line1_angle =
+                f64::atan2(self.poss.1.y - self.poss.0.y, self.poss.1.x - self.poss.0.x)
+                    + f64::consts::PI / 2.0;
+            let line2_angle =
+                f64::atan2(self.poss.2.y - self.poss.1.y, self.poss.2.x - self.poss.1.x)
+                    + f64::consts::PI / 2.0;
+            let line1_mid = Point {
+                x: (self.poss.1.x + self.poss.0.x) / 2.0,
+                y: (self.poss.1.y + self.poss.0.y) / 2.0,
+                a: 0.0,
+            };
+            let line2_mid = Point {
+                x: (self.poss.2.x + self.poss.1.x) / 2.0,
+                y: (self.poss.2.y + self.poss.1.y) / 2.0,
+                a: 0.0,
+            };
 
             let Ax1 = line1_mid.x;
             let Ay1 = line1_mid.y;
             let Ax2 = line1_mid.x + 10.0;
-            let Ay2 = f64::tan(line1_angle)*10.0 + line1_mid.y;
+            let Ay2 = f64::tan(line1_angle) * 10.0 + line1_mid.y;
 
             let Bx1 = line2_mid.x;
             let By1 = line2_mid.y;
             let Bx2 = line2_mid.x + 10.0;
-            let By2 = f64::tan(line2_angle)*10.0 + line2_mid.y;
+            let By2 = f64::tan(line2_angle) * 10.0 + line2_mid.y;
 
             let d = (By2 - By1) * (Ax2 - Ax1) - (Bx2 - Bx1) * (Ay2 - Ay1);
             let uA = ((Bx2 - Bx1) * (Ay1 - By1) - (By2 - By1) * (Ax1 - Bx1)) / d;
@@ -381,26 +400,23 @@ impl Arc {
             let cent = Point {
                 x: Ax1 + uA * (Ax2 - Ax1),
                 y: Ay1 + uA * (Ay2 - Ay1),
-                a: 0.0
+                a: 0.0,
             };
 
-            let radius = f64::sqrt((self.poss.1.x - cent.x).powi(2)+(self.poss.1.y - cent.y).powi(2));
+            let radius =
+                f64::sqrt((self.poss.1.x - cent.x).powi(2) + (self.poss.1.y - cent.y).powi(2));
 
             let angle_start = f64::atan2(self.poss.0.y - cent.y, self.poss.0.x - cent.x);
             let angle_stop = f64::atan2(self.poss.2.y - cent.y, self.poss.2.x - cent.x);
 
-            context.move_to(
-                self.poss.0.x * scale,
-                self.poss.0.y * scale,
-            );
+            context.move_to(self.poss.0.x * scale, self.poss.0.y * scale);
             context.arc(
                 cent.x * scale,
-                cent.y* scale,
+                cent.y * scale,
                 radius * scale,
                 angle_start,
                 angle_stop,
             );
-
 
             // console_log!("angle angle : {},{} : r {}", pos2.x, pos2.y, radius);
         }
@@ -447,22 +463,10 @@ impl Noconnect {
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         // draws an "x"
         let size = 1.0;
-        context.move_to(
-            (self.pos.x - size) * scale,
-            (self.pos.y - size) * scale,
-        );
-        context.line_to(
-            (self.pos.x + size) * scale,
-            (self.pos.y + size) * scale,
-        );
-        context.move_to(
-            (self.pos.x - size) * scale,
-            (self.pos.y + size) * scale,
-        );
-        context.line_to(
-            (self.pos.x + size) * scale,
-            (self.pos.y - size) * scale,
-        );
+        context.move_to((self.pos.x - size) * scale, (self.pos.y - size) * scale);
+        context.line_to((self.pos.x + size) * scale, (self.pos.y + size) * scale);
+        context.move_to((self.pos.x - size) * scale, (self.pos.y + size) * scale);
+        context.line_to((self.pos.x + size) * scale, (self.pos.y - size) * scale);
     }
 }
 
@@ -539,10 +543,7 @@ impl Pin {
         context.move_to(0.0, 0.0);
         context.line_to(self.len * scale, 0.0);
         context.rotate(-angle);
-        context.translate(
-            -(self.pos.x * scale),
-            -(self.pos.y * scale),
-        );
+        context.translate(-(self.pos.x * scale), -(self.pos.y * scale));
     }
 }
 
@@ -569,6 +570,12 @@ impl Symbol {
     }
 
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
+        for rect in &self.rects {
+            rect.draw(context, scale);
+        }
+        for circ in &self.circs {
+            circ.draw(context, scale);
+        }
         for line in &self.lines {
             line.draw(context, scale);
         }
@@ -577,12 +584,6 @@ impl Symbol {
         }
         for pin in &self.pins {
             pin.draw(context, scale);
-        }
-        for rect in &self.rects {
-            rect.draw(context, scale);
-        }
-        for circ in &self.circs {
-            circ.draw(context, scale);
         }
     }
 }
@@ -639,16 +640,13 @@ impl SymbolInst {
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         if self.parent.is_some() {
             let angle = (self.pos.a) / 180.0 * f64::consts::PI;
-            context.translate(self.pos.x * scale , self.pos.y * scale);
+            context.translate(self.pos.x * scale, self.pos.y * scale);
             context.scale(
                 -(self.mirror.0 as i32 as f64 * 2.0 - 1.0),
                 (self.mirror.1 as i32 as f64 * 2.0 - 1.0),
             );
             context.rotate(angle);
-            self.parent
-                .as_ref()
-                .unwrap()
-                .draw(context, scale);
+            self.parent.as_ref().unwrap().draw(context, scale);
 
             for prop in &self.props {
                 prop.draw(context, scale);
@@ -659,10 +657,7 @@ impl SymbolInst {
                 -(self.mirror.0 as i32 as f64 * 2.0 - 1.0),
                 (self.mirror.1 as i32 as f64 * 2.0 - 1.0),
             );
-            context.translate(
-                -(self.pos.x * scale),
-                -(self.pos.y * scale),
-            );
+            context.translate(-(self.pos.x * scale), -(self.pos.y * scale));
         }
     }
 }
@@ -674,7 +669,6 @@ pub enum Shape {
     Local,
     Noconn,
 }
-
 
 #[derive(Debug, Clone)]
 pub struct Label {
@@ -703,7 +697,7 @@ impl Label {
         context.translate((self.pos.x) * scale, (self.pos.y) * scale);
         context.rotate(-angle); // why inverse?
         match self.shape {
-            Shape::Heir => {    
+            Shape::Heir => {
                 context.set_font(format!("{}px monospace", (1.8 * scale) as i32).as_str());
                 context.set_text_baseline("middle");
                 if angle > f64::consts::PI * 0.5 && angle <= f64::consts::PI * 1.5 {
@@ -723,7 +717,6 @@ impl Label {
                 context.line_to((size * 2.0) * scale, -(size) * scale);
                 context.line_to((size) * scale, -(size) * scale);
                 context.line_to(0.0, 0.0);
-
             }
             _ => {}
         }
@@ -942,6 +935,18 @@ impl Parser {
             }
             rect
         };
+        let p_fill = |obj: &Sexp| -> FillType {
+            match obj.list().unwrap()[1].list().unwrap()[1]
+                .string()
+                .unwrap()
+                .as_str()
+            {
+                "none" => FillType::None,
+                "outline" => FillType::Outline,
+                "background" => FillType::Background,
+                _ => FillType::None,
+            }
+        };
         let p_circ = |obj: &Sexp| -> Circ {
             let mut circ = Circ::blank();
 
@@ -965,6 +970,9 @@ impl Parser {
                     }
                     (true, "stroke") => {
                         circ.stroke = p_stroke(obj);
+                    }
+                    (true, "fill") => {
+                        circ.fill = p_fill(obj);
                     }
                     _ => {
                         //println!("{:?}", name);
@@ -1294,6 +1302,9 @@ impl Schematic {
         context.begin_path();
         // todo context.scale
         let pos = Point::blank();
+        for symb in &self.symbs {
+            symb.draw(context, scale);
+        }
         for wire in &self.wires {
             wire.draw(context, scale);
         }
@@ -1312,9 +1323,7 @@ impl Schematic {
         for label in &self.labels {
             label.draw(context, scale);
         }
-        for symb in &self.symbs {
-            symb.draw(context, scale);
-        }
+
         context.stroke();
     }
 }
