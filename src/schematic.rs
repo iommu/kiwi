@@ -57,7 +57,7 @@ pub enum StrokeFormat {
     Dot,
     Default,
     Solid,
-}
+} 
 
 #[derive(Debug, Clone)]
 pub struct Stroke {
@@ -354,7 +354,56 @@ impl Arc {
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, scale: f64) {
         // draw pos to pos using stroke
         // todo wrong method of drawing arc (center != center)
+        {
+            let line1_angle = f64::atan2(self.poss.1.y - self.poss.0.y, self.poss.1.x - self.poss.0.x) + f64::consts::PI/2.0;
+            let line2_angle = f64::atan2(self.poss.2.y - self.poss.1.y, self.poss.2.x - self.poss.1.x) + f64::consts::PI/2.0;
+            let line1_mid = Point{x: (self.poss.1.x + self.poss.0.x)/2.0, y: (self.poss.1.y + self.poss.0.y)/2.0, a: 0.0};
+            let line2_mid = Point{x: (self.poss.2.x + self.poss.1.x)/2.0, y: (self.poss.2.y + self.poss.1.y)/2.0, a: 0.0};
 
+            let Ax1 = line1_mid.x;
+            let Ay1 = line1_mid.y;
+            let Ax2 = line1_mid.x + 10.0;
+            let Ay2 = f64::tan(line1_angle)*10.0 + line1_mid.y;
+
+            let Bx1 = line2_mid.x;
+            let By1 = line2_mid.y;
+            let Bx2 = line2_mid.x + 10.0;
+            let By2 = f64::tan(line2_angle)*10.0 + line2_mid.y;
+
+            let d = (By2 - By1) * (Ax2 - Ax1) - (Bx2 - Bx1) * (Ay2 - Ay1);
+            let uA = ((Bx2 - Bx1) * (Ay1 - By1) - (By2 - By1) * (Ax1 - Bx1)) / d;
+            let uB = ((Ax2 - Ax1) * (Ay1 - By1) - (Ay2 - Ay1) * (Ax1 - Bx1)) / d;
+
+            let d = (By2 - By1) * (Ax2 - Ax1) - (Bx2 - Bx1) * (Ay2 - Ay1);
+            let uA = ((Bx2 - Bx1) * (Ay1 - By1) - (By2 - By1) * (Ax1 - Bx1)) / d;
+            let uB = ((Ax2 - Ax1) * (Ay1 - By1) - (Ay2 - Ay1) * (Ax1 - Bx1)) / d;
+            //
+            let cent = Point {
+                x: Ax1 + uA * (Ax2 - Ax1),
+                y: Ay1 + uA * (Ay2 - Ay1),
+                a: 0.0
+            };
+
+            let radius = f64::sqrt((self.poss.1.x - cent.x).powi(2)+(self.poss.1.y - cent.y).powi(2));
+
+            let angle_start = f64::atan2(self.poss.0.y - cent.y, self.poss.0.x - cent.x);
+            let angle_stop = f64::atan2(self.poss.2.y - cent.y, self.poss.2.x - cent.x);
+
+            context.move_to(
+                self.poss.0.x * scale,
+                self.poss.0.y * scale,
+            );
+            context.arc(
+                cent.x * scale,
+                cent.y* scale,
+                radius * scale,
+                angle_start,
+                angle_stop,
+            );
+
+
+            // console_log!("angle angle : {},{} : r {}", pos2.x, pos2.y, radius);
+        }
 
         // triiggg
         let radius = f64::sqrt(
@@ -363,17 +412,17 @@ impl Arc {
         );
         let angle_start = f64::atan2(self.poss.0.y - self.poss.1.y, self.poss.0.x - self.poss.1.x);
         let angle_stop = f64::atan2(self.poss.2.y - self.poss.1.y, self.poss.2.x - self.poss.1.x);
-        context.move_to(
-            self.poss.0.x * scale,
-            self.poss.0.y * scale,
-        );
-        context.arc(
-            self.poss.1.x * scale,
-            self.poss.1.y* scale,
-            radius * scale,
-            angle_start,
-            angle_stop,
-        );
+        // context.move_to(
+        //     self.poss.0.x * scale,
+        //     self.poss.0.y * scale,
+        // );
+        // context.arc(
+        //     self.poss.1.x * scale,
+        //     self.poss.1.y* scale,
+        //     radius * scale,
+        //     angle_start,
+        //     angle_stop,
+        // );
     }
 }
 
@@ -656,16 +705,17 @@ impl Label {
         match self.shape {
             Shape::Heir => {    
                 context.set_font(format!("{}px monospace", (1.8 * scale) as i32).as_str());
+                context.set_text_baseline("middle");
                 if angle > f64::consts::PI * 0.5 && angle <= f64::consts::PI * 1.5 {
                     context.rotate(-f64::consts::PI); // half rotate to flip text
                     context.set_text_align("right");
-                    context.fill_text(self.id.as_str(), -(size * 2.5) * scale, (1.0) * scale);
+                    context.fill_text(self.id.as_str(), -(size * 2.5) * scale, 0.0);
                     context.rotate(f64::consts::PI); // finish rotation
                 } else {
                     context.set_text_align("left");
-                    context.fill_text(self.id.as_str(), (size * 2.5) * scale, (1.0) * scale);
+                    context.fill_text(self.id.as_str(), (size * 2.5) * scale, 0.0);
                 }
-        
+                context.set_text_baseline("bottom");
                 // draw frame
                 context.move_to(0.0, 0.0);
                 context.line_to((size) * scale, (size) * scale);
@@ -1242,6 +1292,7 @@ impl Schematic {
             .dyn_into::<web_sys::CanvasRenderingContext2d>()
             .unwrap();
         context.begin_path();
+        // todo context.scale
         let pos = Point::blank();
         for wire in &self.wires {
             wire.draw(context, scale);
