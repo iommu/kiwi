@@ -2,10 +2,8 @@ use std::cell::Cell;
 use std::f64;
 use std::rc::Rc;
 use schematic::Schematic;
-use schematic::Point;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::Document;
 mod schematic;
 mod theme;
 

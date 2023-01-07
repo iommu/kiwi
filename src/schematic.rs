@@ -1,10 +1,7 @@
-use js_sys::Array;
 use std::collections::HashMap;
 use std::f64;
-use std::fs;
 use symbolic_expressions;
 use symbolic_expressions::Sexp;
-use wasm_bindgen::describe::F64;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
@@ -54,12 +51,12 @@ impl Point {
 
 #[derive(Debug, Clone)]
 pub enum StrokeFormat {
-    dash,
-    dash_dot,
-    dash_dot_dot,
-    dot,
-    default,
-    solid,
+    Dash,
+    DashDot,
+    DashDotDot,
+    Dot,
+    Default,
+    Solid,
 }
 
 #[derive(Debug, Clone)]
@@ -73,7 +70,7 @@ impl Stroke {
     fn blank() -> Stroke {
         Stroke {
             width: 0.0,
-            format: StrokeFormat::default,
+            format: StrokeFormat::Default,
             color: (0, 0, 0, 0),
         }
     }
@@ -111,9 +108,9 @@ impl Wire {
 
 #[derive(Debug, Clone)]
 pub enum FillType {
-    none,
-    outline,
-    background,
+    None,
+    Outline,
+    Background,
 }
 
 #[derive(Debug, Clone)]
@@ -129,7 +126,7 @@ impl Rect {
         Rect {
             poss: (Point::blank(), Point::blank()),
             stroke: Stroke::blank(),
-            fill: FillType::none,
+            fill: FillType::None,
             uuid: "".to_string(),
         }
     }
@@ -143,7 +140,7 @@ impl Rect {
         );
 
         match self.fill {
-            FillType::background => {
+            FillType::Background => {
                 context.set_fill_style(&JsValue::from("orange"));
                 context.fill_rect(
                     self.poss.0.x * scale,
@@ -315,7 +312,7 @@ impl Polyline {
         );
         for point in &self.poss {
             match self.stroke.format {
-                StrokeFormat::default => {
+                StrokeFormat::Default => {
                     context.set_line_dash(&js_sys::Array::new());
                 }
                 _ => {
@@ -758,8 +755,8 @@ impl Parser {
                     }
                     (true, "type") => {
                         stroke.format = match obj.list().unwrap()[1].string().unwrap().as_str() {
-                            "dash" => StrokeFormat::dash,
-                            _ => StrokeFormat::default,
+                            "dash" => StrokeFormat::Dash,
+                            _ => StrokeFormat::Default,
                         };
                     }
                     (true, "color") => {
@@ -872,8 +869,8 @@ impl Parser {
                             .unwrap()
                             .as_str()
                         {
-                            "background" => FillType::background,
-                            _ => FillType::none,
+                            "background" => FillType::Background,
+                            _ => FillType::None,
                         };
                     }
                     (true, "uuid") => {
