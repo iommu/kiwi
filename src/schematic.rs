@@ -1024,7 +1024,29 @@ impl Parser {
             label
         };
         let p_prop = |obj: &Sexp| -> Property {
-            Property::blank()
+            let mut prop = Property::blank();
+            //
+            let props = obj.list().unwrap();
+            prop.key = props[1].string().unwrap().clone();
+            prop.value = props[2].string().unwrap().clone();
+            prop.id = props[3].list().unwrap()[1]
+                .string()
+                .unwrap()
+                .parse::<i32>()
+                .unwrap();
+            if props[4].is_list() {
+                prop.pos = p_pos(&props[4]);
+            }
+            if props.len() >= 6 && props[5].is_list() {
+                // todo : effect
+                for obj in props[5].list().unwrap() {
+                    if obj.is_string() && obj.string().unwrap().as_str() == "hide" {
+                        prop.show = false;
+                    }
+                }
+            }
+            //
+            prop
         };
         let p_symb = |obj: &Sexp| -> Symbol {
             let mut symb = Symbol::blank();
@@ -1073,28 +1095,7 @@ impl Parser {
                         symb.id = obj.list().unwrap()[1].string().unwrap().clone();
                     }
                     (true, "property") => {
-                        let props = obj.list().unwrap();
-                        let mut prop = Property::blank();
-                        //
-                        prop.key = props[1].string().unwrap().clone();
-                        prop.value = props[2].string().unwrap().clone();
-                        prop.id = props[3].list().unwrap()[1]
-                            .string()
-                            .unwrap()
-                            .parse::<i32>()
-                            .unwrap();
-                        if props[4].is_list() {
-                            prop.pos = p_pos(&props[4]);
-                        }
-                        if props.len() >= 6 && props[5].is_list() {
-                            // todo : effect
-                            for obj in props[5].list().unwrap() {
-                                if obj.is_string() && obj.string().unwrap().as_str() == "hide" {
-                                    prop.show = false;
-                                }
-                            }
-                        }
-                        symb.props.push(prop);
+                        symb.props.push(p_prop(obj));
                     }
                     (true, "uuid") => {
                         symb.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
@@ -1133,23 +1134,7 @@ impl Parser {
                         symb.id = obj.string().unwrap().clone();
                     }
                     (true, "property") => {
-                        let props = obj.list().unwrap();
-                        let mut prop = Property::blank();
-                        //
-                        prop.key = props[1].string().unwrap().clone();
-                        prop.value = props[2].string().unwrap().clone();
-                        prop.id = props[3].list().unwrap()[1]
-                            .string()
-                            .unwrap()
-                            .parse::<i32>()
-                            .unwrap();
-                        if props[4].is_list() {
-                            prop.pos = p_pos(&props[4]);
-                        }
-                        // todo : effect
-                        // todo : "at" parser
-                        // todo : pos => pos
-                        symb.props.push(prop);
+                        symb.props.push(p_prop(obj));
                     }
                     (true, "symbol") => {
                         symb.symbs.push(p_symb(obj));
