@@ -31,6 +31,7 @@ macro_rules! console_log {
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
 }
 
+#[derive(Debug, Clone)]
 pub struct CanvasMod {
     pub scale: f64,
     pub flip: (bool, bool),
@@ -521,20 +522,35 @@ impl Property {
         } // don't continue if hiden
           // todo : inherit from Text rendering
         let angle = (self.pos.a) / 180.0 * f64::consts::PI;
+        // // if context is flipped then flip back to draw text
+        // context.scale(
+        //     -(cmod.flip.0 as i32 as f64 * 2.0 - 1.0),
+        //     (cmod.flip.1 as i32 as f64 * 2.0 - 1.0),
+        // );
         context.translate(self.pos.x * cmod.scale, self.pos.y * cmod.scale);
+        console_log!("prop {}, {}", self.pos.x, self.pos.y);
         context.set_font(format!("{}px monospace", (1.8 * cmod.scale) as i32).as_str());
+
+
+
         if angle > f64::consts::PI * 0.5 && angle <= f64::consts::PI * 1.5 {
             context.rotate(-angle - f64::consts::PI); // half rotate to flip text
             context.set_text_align("right");
-            context.fill_text(self.key.as_str(), 0.0, (1.8) * cmod.scale);
+            context.fill_text(self.value.as_str(), 0.0, (1.8) * cmod.scale);
             context.rotate(f64::consts::PI); // finish rotation
         } else {
             context.rotate(-angle); // why inverse?
             context.set_text_align("left");
-            context.fill_text(self.key.as_str(), 0.0, (1.8) * cmod.scale);
+            context.fill_text(self.value.as_str(), 0.0, (1.8) * cmod.scale);
         }
         context.rotate(angle);
+
         context.translate(-(self.pos.x * cmod.scale), -(self.pos.y * cmod.scale));
+                        // if context is flipped then flip back to draw text
+        // context.scale(
+        //     -(cmod.flip.0 as i32 as f64 * 2.0 - 1.0),
+        //     (cmod.flip.1 as i32 as f64 * 2.0 - 1.0),
+        // );
     }
 }
 
@@ -668,11 +684,10 @@ impl SymbolInst {
                 (self.mirror.1 as i32 as f64 * 2.0 - 1.0),
             );
             context.rotate(angle);
-            self.parent.as_ref().unwrap().draw(context, cmod);
+            // let mut cmod = cmod.clone();
+            // cmod.flip = (cmod.flip.0 ^ self.mirror.0, cmod.flip.1 ^ self.mirror.1);
+            self.parent.as_ref().unwrap().draw(context, &cmod);
 
-            for prop in &self.props {
-                prop.draw(context, cmod);
-            }
 
             context.rotate(-angle);
             context.scale(
@@ -680,6 +695,12 @@ impl SymbolInst {
                 (self.mirror.1 as i32 as f64 * 2.0 - 1.0),
             );
             context.translate(-(self.pos.x * cmod.scale), -(self.pos.y * cmod.scale));
+
+            // apparently properties are absolute compared to their parent symbol?
+            for prop in &self.props {
+                prop.draw(context, &cmod);
+            }
+
         }
     }
 }
@@ -1118,6 +1139,7 @@ impl Parser {
                 .unwrap();
             if props[4].is_list() {
                 prop.pos = p_pos(&props[4]);
+                console_log!("PROP : {}, {}", prop.pos.x, prop.pos.y);
             }
             if props.len() >= 6 && props[5].is_list() {
                 // todo : effect
