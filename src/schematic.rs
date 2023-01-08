@@ -136,6 +136,7 @@ impl FillType {
     }
 
     fn end(&self, context: &web_sys::CanvasRenderingContext2d) {
+        context.close_path();
         match self {
             FillType::Background => {
                 context.fill();
@@ -143,6 +144,7 @@ impl FillType {
             FillType::Outline => {
                 context.fill();
                 context.stroke();
+                // todo : does not work? dual rendering?
             }
             FillType::None => {
                 context.stroke();
@@ -697,6 +699,7 @@ impl SymbolInst {
             context.translate(-(self.pos.x * cmod.scale), -(self.pos.y * cmod.scale));
 
             // apparently properties are absolute compared to their parent symbol?
+            // todo collate template props
             for prop in &self.props {
                 prop.draw(context, &cmod, self.pos.a);
             }
