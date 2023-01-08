@@ -136,7 +136,6 @@ impl FillType {
     }
 
     fn end(&self, context: &web_sys::CanvasRenderingContext2d) {
-        context.close_path();
         match self {
             FillType::Background => {
                 context.fill();
