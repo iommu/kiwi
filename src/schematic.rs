@@ -354,11 +354,6 @@ impl Polyline {
                     context.set_line_dash(&x);
                 }
             }
-
-            // context.set_stroke_style(&JsValue::from(format!(
-            //     "rgba({}, {}, {}, {})",
-            //     self.stroke.color.0, self.stroke.color.0, self.stroke.color.2, 255
-            // )));
             context.line_to(point.x * cmod.scale, point.y * cmod.scale);
         }
         self.fill.end(context);
@@ -1346,7 +1341,6 @@ impl Schematic {
             scale: scale * 4.0,
             flip: (false, false),
         }; //todo fix scaling
-           // todo context.scale
         let pos = Point::blank();
         for symb in &self.symbs {
             symb.draw(context, cmod);
