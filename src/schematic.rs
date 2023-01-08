@@ -516,12 +516,12 @@ impl Property {
         }
     }
 
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, cmod: &CanvasMod) {
+    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, cmod: &CanvasMod, angle: f64) {
         if !self.show {
             return;
         } // don't continue if hiden
           // todo : inherit from Text rendering
-        let angle = (self.pos.a) / 180.0 * f64::consts::PI;
+        let angle = (self.pos.a + angle) / 180.0 * f64::consts::PI;
         // // if context is flipped then flip back to draw text
         // context.scale(
         //     -(cmod.flip.0 as i32 as f64 * 2.0 - 1.0),
@@ -698,7 +698,7 @@ impl SymbolInst {
 
             // apparently properties are absolute compared to their parent symbol?
             for prop in &self.props {
-                prop.draw(context, &cmod);
+                prop.draw(context, &cmod, self.pos.a);
             }
 
         }
