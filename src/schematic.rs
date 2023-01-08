@@ -211,7 +211,10 @@ impl Circ {
         self.fill.begin(context, &JsValue::from("black"));
 
         // draw pos to pos using stroke
-        context.move_to((self.pos.x + self.radius) * cmod.scale, self.pos.y * cmod.scale);
+        context.move_to(
+            (self.pos.x + self.radius) * cmod.scale,
+            self.pos.y * cmod.scale,
+        );
         context.arc(
             self.pos.x * cmod.scale,
             self.pos.y * cmod.scale,
@@ -440,7 +443,6 @@ impl Arc {
                 angle_stop,
             );
 
-            // console_log!("angle angle : {},{} : r {}", pos2.x, pos2.y, radius);
             self.fill.end(context);
         }
 
@@ -486,10 +488,22 @@ impl Noconnect {
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, cmod: &CanvasMod) {
         // draws an "x"
         let size = 1.0;
-        context.move_to((self.pos.x - size) * cmod.scale, (self.pos.y - size) * cmod.scale);
-        context.line_to((self.pos.x + size) * cmod.scale, (self.pos.y + size) * cmod.scale);
-        context.move_to((self.pos.x - size) * cmod.scale, (self.pos.y + size) * cmod.scale);
-        context.line_to((self.pos.x + size) * cmod.scale, (self.pos.y - size) * cmod.scale);
+        context.move_to(
+            (self.pos.x - size) * cmod.scale,
+            (self.pos.y - size) * cmod.scale,
+        );
+        context.line_to(
+            (self.pos.x + size) * cmod.scale,
+            (self.pos.y + size) * cmod.scale,
+        );
+        context.move_to(
+            (self.pos.x - size) * cmod.scale,
+            (self.pos.y + size) * cmod.scale,
+        );
+        context.line_to(
+            (self.pos.x + size) * cmod.scale,
+            (self.pos.y - size) * cmod.scale,
+        );
     }
 }
 
@@ -522,16 +536,8 @@ impl Property {
         } // don't continue if hiden
           // todo : inherit from Text rendering
         let angle = (self.pos.a + angle) / 180.0 * f64::consts::PI;
-        // // if context is flipped then flip back to draw text
-        // context.scale(
-        //     -(cmod.flip.0 as i32 as f64 * 2.0 - 1.0),
-        //     (cmod.flip.1 as i32 as f64 * 2.0 - 1.0),
-        // );
         context.translate(self.pos.x * cmod.scale, self.pos.y * cmod.scale);
-        console_log!("prop {}, {}", self.pos.x, self.pos.y);
-        context.set_font(format!("{}px monospace", (1.8 * cmod.scale) as i32).as_str());
-
-
+        context.set_font(format!("{}px monospace", (1.8 * cmod.scale) as i32).as_str()); // todo : cache
 
         if angle > f64::consts::PI * 0.5 && angle <= f64::consts::PI * 1.5 {
             context.rotate(-angle - f64::consts::PI); // half rotate to flip text
@@ -546,11 +552,6 @@ impl Property {
         context.rotate(angle);
 
         context.translate(-(self.pos.x * cmod.scale), -(self.pos.y * cmod.scale));
-                        // if context is flipped then flip back to draw text
-        // context.scale(
-        //     -(cmod.flip.0 as i32 as f64 * 2.0 - 1.0),
-        //     (cmod.flip.1 as i32 as f64 * 2.0 - 1.0),
-        // );
     }
 }
 
@@ -688,7 +689,6 @@ impl SymbolInst {
             // cmod.flip = (cmod.flip.0 ^ self.mirror.0, cmod.flip.1 ^ self.mirror.1);
             self.parent.as_ref().unwrap().draw(context, &cmod);
 
-
             context.rotate(-angle);
             context.scale(
                 -(self.mirror.0 as i32 as f64 * 2.0 - 1.0),
@@ -700,7 +700,6 @@ impl SymbolInst {
             for prop in &self.props {
                 prop.draw(context, &cmod, self.pos.a);
             }
-
         }
     }
 }
