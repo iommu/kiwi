@@ -35,6 +35,7 @@ macro_rules! console_log {
 pub struct CanvasMod {
     pub scale: f64,
     pub flip: (bool, bool),
+    pub theme: Theme,
 }
 
 impl CanvasMod {
@@ -42,6 +43,7 @@ impl CanvasMod {
         CanvasMod {
             scale: 1.0,
             flip: (false, false),
+            theme: Theme::new()
         }
     }
 }
@@ -1340,6 +1342,7 @@ impl Schematic {
         let cmod = &CanvasMod {
             scale: scale * 4.0,
             flip: (false, false),
+            theme: Theme::new(),
         }; //todo fix scaling
         let pos = Point::blank();
         for symb in &self.symbs {
