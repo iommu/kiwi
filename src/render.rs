@@ -409,7 +409,6 @@ impl Schematic {
             flip: (false, false),
             theme: Theme::new(),
         }; //todo fix scaling
-        let pos = Point::blank();
         for symb in &self.symbs {
             symb.draw(context, cmod);
         }
