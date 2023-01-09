@@ -42,7 +42,6 @@ impl FillType {
             FillType::None => {
                 context.stroke();
             }
-            _ => {}
         }
         context.begin_path();
     }
