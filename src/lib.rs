@@ -6,6 +6,8 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 mod schematic;
 mod theme;
+mod parser;
+mod render;
 
 #[wasm_bindgen]
 extern "C" {
