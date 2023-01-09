@@ -1,12 +1,9 @@
-
-use std::f64;
 use crate::theme::Theme;
+use std::f64;
 
 use crate::schematic::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-
-
 
 impl Wire {
     fn draw(&self, context: &web_sys::CanvasRenderingContext2d, cmod: &CanvasMod) {
@@ -155,84 +152,60 @@ impl Arc {
         // draw pos to pos using stroke
         self.fill.begin(context, &JsValue::from("black"));
 
-        {
-            let line1_angle =
-                f64::atan2(self.poss.1.y - self.poss.0.y, self.poss.1.x - self.poss.0.x)
-                    + f64::consts::PI / 2.0;
-            let line2_angle =
-                f64::atan2(self.poss.2.y - self.poss.1.y, self.poss.2.x - self.poss.1.x)
-                    + f64::consts::PI / 2.0;
-            let line1_mid = Point {
-                x: (self.poss.1.x + self.poss.0.x) / 2.0,
-                y: (self.poss.1.y + self.poss.0.y) / 2.0,
-                a: 0.0,
-            };
-            let line2_mid = Point {
-                x: (self.poss.2.x + self.poss.1.x) / 2.0,
-                y: (self.poss.2.y + self.poss.1.y) / 2.0,
-                a: 0.0,
-            };
+        let line1_angle = f64::atan2(self.poss.1.y - self.poss.0.y, self.poss.1.x - self.poss.0.x)
+            + f64::consts::PI / 2.0;
+        let line2_angle = f64::atan2(self.poss.2.y - self.poss.1.y, self.poss.2.x - self.poss.1.x)
+            + f64::consts::PI / 2.0;
+        let line1_mid = Point {
+            x: (self.poss.1.x + self.poss.0.x) / 2.0,
+            y: (self.poss.1.y + self.poss.0.y) / 2.0,
+            a: 0.0,
+        };
+        let line2_mid = Point {
+            x: (self.poss.2.x + self.poss.1.x) / 2.0,
+            y: (self.poss.2.y + self.poss.1.y) / 2.0,
+            a: 0.0,
+        };
 
-            let Ax1 = line1_mid.x;
-            let Ay1 = line1_mid.y;
-            let Ax2 = line1_mid.x + 10.0;
-            let Ay2 = f64::tan(line1_angle) * 10.0 + line1_mid.y;
+        let Ax1 = line1_mid.x;
+        let Ay1 = line1_mid.y;
+        let Ax2 = line1_mid.x + 10.0;
+        let Ay2 = f64::tan(line1_angle) * 10.0 + line1_mid.y;
 
-            let Bx1 = line2_mid.x;
-            let By1 = line2_mid.y;
-            let Bx2 = line2_mid.x + 10.0;
-            let By2 = f64::tan(line2_angle) * 10.0 + line2_mid.y;
+        let Bx1 = line2_mid.x;
+        let By1 = line2_mid.y;
+        let Bx2 = line2_mid.x + 10.0;
+        let By2 = f64::tan(line2_angle) * 10.0 + line2_mid.y;
 
-            let d = (By2 - By1) * (Ax2 - Ax1) - (Bx2 - Bx1) * (Ay2 - Ay1);
-            let uA = ((Bx2 - Bx1) * (Ay1 - By1) - (By2 - By1) * (Ax1 - Bx1)) / d;
-            let uB = ((Ax2 - Ax1) * (Ay1 - By1) - (Ay2 - Ay1) * (Ax1 - Bx1)) / d;
+        let d = (By2 - By1) * (Ax2 - Ax1) - (Bx2 - Bx1) * (Ay2 - Ay1);
+        let uA = ((Bx2 - Bx1) * (Ay1 - By1) - (By2 - By1) * (Ax1 - Bx1)) / d;
+        let uB = ((Ax2 - Ax1) * (Ay1 - By1) - (Ay2 - Ay1) * (Ax1 - Bx1)) / d;
 
-            let d = (By2 - By1) * (Ax2 - Ax1) - (Bx2 - Bx1) * (Ay2 - Ay1);
-            let uA = ((Bx2 - Bx1) * (Ay1 - By1) - (By2 - By1) * (Ax1 - Bx1)) / d;
-            let uB = ((Ax2 - Ax1) * (Ay1 - By1) - (Ay2 - Ay1) * (Ax1 - Bx1)) / d;
-            //
-            let cent = Point {
-                x: Ax1 + uA * (Ax2 - Ax1),
-                y: Ay1 + uA * (Ay2 - Ay1),
-                a: 0.0,
-            };
+        let d = (By2 - By1) * (Ax2 - Ax1) - (Bx2 - Bx1) * (Ay2 - Ay1);
+        let uA = ((Bx2 - Bx1) * (Ay1 - By1) - (By2 - By1) * (Ax1 - Bx1)) / d;
+        let uB = ((Ax2 - Ax1) * (Ay1 - By1) - (Ay2 - Ay1) * (Ax1 - Bx1)) / d;
+        //
+        let cent = Point {
+            x: Ax1 + uA * (Ax2 - Ax1),
+            y: Ay1 + uA * (Ay2 - Ay1),
+            a: 0.0,
+        };
 
-            let radius =
-                f64::sqrt((self.poss.1.x - cent.x).powi(2) + (self.poss.1.y - cent.y).powi(2));
+        let radius = f64::sqrt((self.poss.1.x - cent.x).powi(2) + (self.poss.1.y - cent.y).powi(2));
 
-            let angle_start = f64::atan2(self.poss.0.y - cent.y, self.poss.0.x - cent.x);
-            let angle_stop = f64::atan2(self.poss.2.y - cent.y, self.poss.2.x - cent.x);
+        let angle_start = f64::atan2(self.poss.0.y - cent.y, self.poss.0.x - cent.x);
+        let angle_stop = f64::atan2(self.poss.2.y - cent.y, self.poss.2.x - cent.x);
 
-            context.move_to(self.poss.0.x * cmod.scale, self.poss.0.y * cmod.scale);
-            context.arc(
-                cent.x * cmod.scale,
-                cent.y * cmod.scale,
-                radius * cmod.scale,
-                angle_start,
-                angle_stop,
-            );
-
-            self.fill.end(context);
-        }
-
-        // triiggg
-        let radius = f64::sqrt(
-            f64::powf(self.poss.0.x - self.poss.1.x, 2.0)
-                + f64::powf(self.poss.0.y - self.poss.1.y, 2.0),
+        context.move_to(self.poss.0.x * cmod.scale, self.poss.0.y * cmod.scale);
+        context.arc(
+            cent.x * cmod.scale,
+            cent.y * cmod.scale,
+            radius * cmod.scale,
+            angle_start,
+            angle_stop,
         );
-        let angle_start = f64::atan2(self.poss.0.y - self.poss.1.y, self.poss.0.x - self.poss.1.x);
-        let angle_stop = f64::atan2(self.poss.2.y - self.poss.1.y, self.poss.2.x - self.poss.1.x);
-        // context.move_to(
-        //     self.poss.0.x * cmod.scale,
-        //     self.poss.0.y * cmod.scale,
-        // );
-        // context.arc(
-        //     self.poss.1.x * cmod.scale,
-        //     self.poss.1.y* cmod.scale,
-        //     radius * cmod.scale,
-        //     angle_start,
-        //     angle_stop,
-        // );
+
+        self.fill.end(context);
     }
 }
 
