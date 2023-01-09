@@ -44,7 +44,7 @@ pub fn start(file: &str) -> Result<(), JsValue> {
     let pressed = Rc::new(Cell::new(false));
     let scale = Rc::new(Cell::new(2.0f64));
     let delta = Rc::new(Cell::new((0.0f64, 0.0f64)));
-    let schematic = Schematic::new(file);
+    let schematic = Schematic::from_str(file);
     schematic.draw(&canvas, scale.get());
 
     {

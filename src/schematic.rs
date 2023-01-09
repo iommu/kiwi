@@ -435,7 +435,7 @@ impl Schematic {
         }
     }
 
-    pub fn new(file: &str) -> Schematic {
+    pub fn from_str(file: &str) -> Schematic {
         let sexp = &symbolic_expressions::parser::parse_str(file).unwrap();
         Schematic::from_sexp(sexp)
     }    
