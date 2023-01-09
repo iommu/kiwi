@@ -420,10 +420,12 @@ impl Label {
                 (true, "at") => {
                     label.pos = Point::from_sexp(obj);
                 }
+                (true, "effects") => {
+                    label.effect = Effect::from_sexp(obj);
+                }
                 (true, "uuid") => {
                     label.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
                 }
-                // todo : effects
                 _ => { // should be string
                      //println!("{:?}", name);
                 }

@@ -409,7 +409,7 @@ pub struct Label {
     pub id: String,
     pub shape: Shape,
     pub pos: Point,
-    // todo : effects
+    pub effect: Effect,
     pub uuid: UUID,
 }
 
@@ -419,6 +419,7 @@ impl Label {
             id: "".to_string(),
             shape: Shape::Heir,
             pos: Point::blank(),
+            effect: Effect::blank(),
             uuid: "".to_string(),
         }
     }
