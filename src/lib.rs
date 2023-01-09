@@ -19,7 +19,7 @@ pub fn start(file: &str) -> Result<(), JsValue> {
     let canvas = Rc::new(canvas);
     let scale = Rc::new(Cell::new(2.0f64));
     let schematic = Schematic::from_str(file);
-    schematic.draw(&canvas, scale.get());
+    schematic.draw(&canvas, scale.get())?;
 
     {
         let _canvas = canvas.clone();
@@ -29,7 +29,7 @@ pub fn start(file: &str) -> Result<(), JsValue> {
         let closure = Closure::wrap(Box::new(move |event: web_sys::WheelEvent| {
             event.prevent_default();
             scale.set(scale.get()+ (event.delta_y() as f64 / 500.0));
-            schematic.draw(&_canvas, scale.get());
+            schematic.draw(&_canvas, scale.get()).unwrap();
         }) as Box<dyn FnMut(_)>);
         canvas.add_event_listener_with_callback("wheel", closure.as_ref().unchecked_ref())?;
         closure.forget();

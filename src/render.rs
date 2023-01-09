@@ -6,15 +6,21 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
 impl Wire {
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, cmod: &CanvasMod) {
+    fn draw(
+        &self,
+        context: &web_sys::CanvasRenderingContext2d,
+        cmod: &CanvasMod,
+    ) -> Result<(), JsValue> {
         // draw pos to pos using stroke
-        if self.poss.is_empty() {
-            return;
-        } // ensure vec exists
-        context.move_to((self.poss[0].x) * cmod.scale, (self.poss[0].y) * cmod.scale);
-        for point in &self.poss {
-            context.line_to((point.x) * cmod.scale, (point.y) * cmod.scale);
+        if !self.poss.is_empty() {
+            // ensure vec exists
+            context.move_to((self.poss[0].x) * cmod.scale, (self.poss[0].y) * cmod.scale);
+            for point in &self.poss {
+                context.line_to((point.x) * cmod.scale, (point.y) * cmod.scale);
+            }
         }
+
+        Ok(())
     }
 }
 
@@ -62,7 +68,11 @@ impl Rect {
 }
 
 impl Circ {
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, cmod: &CanvasMod) {
+    fn draw(
+        &self,
+        context: &web_sys::CanvasRenderingContext2d,
+        cmod: &CanvasMod,
+    ) -> Result<(), JsValue> {
         self.fill.begin(context, &JsValue::from("black"));
 
         // draw pos to pos using stroke
@@ -76,14 +86,19 @@ impl Circ {
             self.radius * cmod.scale,
             0.0,
             f64::consts::PI * 2.0,
-        );
+        )?;
 
         self.fill.end(context);
+        Ok(())
     }
 }
 
 impl Junction {
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, cmod: &CanvasMod) {
+    fn draw(
+        &self,
+        context: &web_sys::CanvasRenderingContext2d,
+        cmod: &CanvasMod,
+    ) -> Result<(), JsValue> {
         // todo : move pos based on diam
         context.move_to(self.pos.x * cmod.scale, self.pos.y * cmod.scale);
         context.arc(
@@ -92,63 +107,77 @@ impl Junction {
             ((self.diameter + 0.2) * 1.0) * cmod.scale,
             0.0,
             f64::consts::PI * 2.0,
-        );
+        )?;
         context.fill();
+        Ok(())
     }
 }
 
 impl Text {
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, cmod: &CanvasMod) {
+    fn draw(
+        &self,
+        context: &web_sys::CanvasRenderingContext2d,
+        cmod: &CanvasMod,
+    ) -> Result<(), JsValue> {
         let angle = self.pos.a / 180.0 * f64::consts::PI;
-        context.translate(self.pos.x * cmod.scale, self.pos.y * cmod.scale);
+        context.translate(self.pos.x * cmod.scale, self.pos.y * cmod.scale)?;
         context.set_font(format!("{}px monospace", (1.8 * cmod.scale) as i32).as_str());
         if angle > f64::consts::PI * 0.5 && angle <= f64::consts::PI * 1.5 {
-            context.rotate(-angle - f64::consts::PI); // half rotate to flip text
+            context.rotate(-angle - f64::consts::PI)?; // half rotate to flip text
             context.set_text_align("right");
             for (index, newline) in self.text.split("\\n").enumerate() {
-                context.fill_text(newline, 0.0, (1.8 * index as f64) * cmod.scale);
+                context.fill_text(newline, 0.0, (1.8 * index as f64) * cmod.scale)?;
             }
-            context.rotate(f64::consts::PI); // finish rotation
+            context.rotate(f64::consts::PI)?; // finish rotation
         } else {
-            context.rotate(-angle); // why inverse?
+            context.rotate(-angle)?; // why inverse?
             context.set_text_align("left");
             for (index, newline) in self.text.split("\\n").enumerate() {
-                context.fill_text(newline, 0.0, (1.8 * index as f64) * cmod.scale);
+                context.fill_text(newline, 0.0, (1.8 * index as f64) * cmod.scale)?;
             }
         }
-        context.rotate(angle);
-        context.translate(-((self.pos.x) * cmod.scale), -((self.pos.y) * cmod.scale));
+        context.rotate(angle)?;
+        context.translate(-((self.pos.x) * cmod.scale), -((self.pos.y) * cmod.scale))?;
+        Ok(())
     }
 }
 
 impl Polyline {
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, cmod: &CanvasMod) {
+    fn draw(
+        &self,
+        context: &web_sys::CanvasRenderingContext2d,
+        cmod: &CanvasMod,
+    ) -> Result<(), JsValue> {
         self.fill.begin(context, &JsValue::from("black"));
         // draw pos to pos using stroke
-        if self.poss.is_empty() {
-            return;
-        } // break if none
-        context.move_to(self.poss[0].x * cmod.scale, self.poss[0].y * cmod.scale);
-        for point in &self.poss {
-            match self.stroke.format {
-                StrokeFormat::Default => {
-                    context.set_line_dash(&js_sys::Array::new());
+        if !self.poss.is_empty() {
+            context.move_to(self.poss[0].x * cmod.scale, self.poss[0].y * cmod.scale);
+            for point in &self.poss {
+                match self.stroke.format {
+                    StrokeFormat::Default => {
+                        context.set_line_dash(&js_sys::Array::new())?;
+                    }
+                    _ => {
+                        let x = js_sys::Array::new();
+                        x.push(&JsValue::from_f64(2.0 * cmod.scale));
+                        x.push(&JsValue::from_f64(2.0 * cmod.scale));
+                        context.set_line_dash(&x)?;
+                    }
                 }
-                _ => {
-                    let x = js_sys::Array::new();
-                    x.push(&JsValue::from_f64(2.0 * cmod.scale));
-                    x.push(&JsValue::from_f64(2.0 * cmod.scale));
-                    context.set_line_dash(&x);
-                }
+                context.line_to(point.x * cmod.scale, point.y * cmod.scale);
             }
-            context.line_to(point.x * cmod.scale, point.y * cmod.scale);
+            self.fill.end(context);
         }
-        self.fill.end(context);
+        Ok(())
     }
 }
 
 impl Arc {
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, cmod: &CanvasMod) {
+    fn draw(
+        &self,
+        context: &web_sys::CanvasRenderingContext2d,
+        cmod: &CanvasMod,
+    ) -> Result<(), JsValue> {
         // draw pos to pos using stroke
         self.fill.begin(context, &JsValue::from("black"));
 
@@ -167,24 +196,23 @@ impl Arc {
             a: 0.0,
         };
 
-        let Ax1 = line1_mid.x;
-        let Ay1 = line1_mid.y;
-        let Ax2 = line1_mid.x + 10.0;
-        let Ay2 = f64::tan(line1_angle) * 10.0 + line1_mid.y;
+        let ax1 = line1_mid.x;
+        let ay1 = line1_mid.y;
+        let ax2 = line1_mid.x + 10.0;
+        let ay2 = f64::tan(line1_angle) * 10.0 + line1_mid.y;
 
-        let Bx1 = line2_mid.x;
-        let By1 = line2_mid.y;
-        let Bx2 = line2_mid.x + 10.0;
-        let By2 = f64::tan(line2_angle) * 10.0 + line2_mid.y;
+        let bx1 = line2_mid.x;
+        let by1 = line2_mid.y;
+        let bx2 = line2_mid.x + 10.0;
+        let by2 = f64::tan(line2_angle) * 10.0 + line2_mid.y;
 
-        let d = (By2 - By1) * (Ax2 - Ax1) - (Bx2 - Bx1) * (Ay2 - Ay1);
-        let uA = ((Bx2 - Bx1) * (Ay1 - By1) - (By2 - By1) * (Ax1 - Bx1)) / d;
-        let uB = ((Ax2 - Ax1) * (Ay1 - By1) - (Ay2 - Ay1) * (Ax1 - Bx1)) / d;
-        
+        let d = (by2 - by1) * (ax2 - ax1) - (bx2 - bx1) * (ay2 - ay1);
+        let ua = ((bx2 - bx1) * (ay1 - by1) - (by2 - by1) * (ax1 - bx1)) / d;
+
         //
         let cent = Point {
-            x: Ax1 + uA * (Ax2 - Ax1),
-            y: Ay1 + uA * (Ay2 - Ay1),
+            x: ax1 + ua * (ax2 - ax1),
+            y: ay1 + ua * (ay2 - ay1),
             a: 0.0,
         };
 
@@ -200,14 +228,19 @@ impl Arc {
             radius * cmod.scale,
             angle_start,
             angle_stop,
-        );
+        )?;
 
         self.fill.end(context);
+        Ok(())
     }
 }
 
 impl Noconnect {
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, cmod: &CanvasMod) {
+    fn draw(
+        &self,
+        context: &web_sys::CanvasRenderingContext2d,
+        cmod: &CanvasMod,
+    ) -> Result<(), JsValue> {
         // draws an "x"
         let size = 1.0;
         context.move_to(
@@ -226,125 +259,157 @@ impl Noconnect {
             (self.pos.x + size) * cmod.scale,
             (self.pos.y - size) * cmod.scale,
         );
+        Ok(())
     }
 }
 
 impl Property {
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, cmod: &CanvasMod, angle: f64) {
-        if !self.show {
-            return;
-        } // don't continue if hiden
-          // todo : inherit from Text rendering
-        let angle = (self.pos.a + angle) / 180.0 * f64::consts::PI;
-        context.translate(self.pos.x * cmod.scale, self.pos.y * cmod.scale);
-        context.set_font(format!("{}px monospace", (1.8 * cmod.scale) as i32).as_str()); // todo : cache
+    fn draw(
+        &self,
+        context: &web_sys::CanvasRenderingContext2d,
+        cmod: &CanvasMod,
+        angle: f64,
+    ) -> Result<(), JsValue> {
+        if self.show {
+            // don't continue if hiden
+            // todo : inherit from Text rendering
+            let angle = (self.pos.a + angle) / 180.0 * f64::consts::PI;
+            context.translate(self.pos.x * cmod.scale, self.pos.y * cmod.scale)?;
+            context.set_font(format!("{}px monospace", (1.8 * cmod.scale) as i32).as_str()); // todo : cache
 
-        if angle > f64::consts::PI * 0.5 && angle <= f64::consts::PI * 1.5 {
-            context.rotate(-angle - f64::consts::PI); // half rotate to flip text
-            context.set_text_align("right");
-            context.fill_text(self.value.as_str(), 0.0, (1.8) * cmod.scale);
-            context.rotate(f64::consts::PI); // finish rotation
-        } else {
-            context.rotate(-angle); // why inverse?
-            context.set_text_align("left");
-            context.fill_text(self.value.as_str(), 0.0, (1.8) * cmod.scale);
+            if angle > f64::consts::PI * 0.5 && angle <= f64::consts::PI * 1.5 {
+                context.rotate(-angle - f64::consts::PI)?; // half rotate to flip text
+                context.set_text_align("right");
+                context.fill_text(self.value.as_str(), 0.0, (1.8) * cmod.scale)?;
+                context.rotate(f64::consts::PI)?; // finish rotation
+            } else {
+                context.rotate(-angle)?; // why inverse?
+                context.set_text_align("left");
+                context.fill_text(self.value.as_str(), 0.0, (1.8) * cmod.scale)?;
+            }
+            context.rotate(angle)?;
+
+            context.translate(-(self.pos.x * cmod.scale), -(self.pos.y * cmod.scale))?;
         }
-        context.rotate(angle);
 
-        context.translate(-(self.pos.x * cmod.scale), -(self.pos.y * cmod.scale));
+        Ok(())
     }
 }
 
 impl Pin {
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, cmod: &CanvasMod) {
+    fn draw(
+        &self,
+        context: &web_sys::CanvasRenderingContext2d,
+        cmod: &CanvasMod,
+    ) -> Result<(), JsValue> {
         let angle = (self.pos.a) / 180.0 * f64::consts::PI;
-        context.translate(self.pos.x * cmod.scale, self.pos.y * cmod.scale);
-        context.rotate(angle);
+        context.translate(self.pos.x * cmod.scale, self.pos.y * cmod.scale)?;
+        context.rotate(angle)?;
         context.move_to(0.0, 0.0);
         context.line_to(self.len * cmod.scale, 0.0);
-        context.rotate(-angle);
-        context.translate(-(self.pos.x * cmod.scale), -(self.pos.y * cmod.scale));
+        context.rotate(-angle)?;
+        context.translate(-(self.pos.x * cmod.scale), -(self.pos.y * cmod.scale))?;
+        Ok(())
     }
 }
 
 impl Symbol {
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, cmod: &CanvasMod) {
+    fn draw(
+        &self,
+        context: &web_sys::CanvasRenderingContext2d,
+        cmod: &CanvasMod,
+    ) -> Result<(), JsValue> {
         for rect in &self.rects {
             rect.draw(context, cmod);
         }
         for circ in &self.circs {
-            circ.draw(context, cmod);
+            circ.draw(context, cmod)?;
         }
         for line in &self.lines {
-            line.draw(context, cmod);
+            line.draw(context, cmod)?;
         }
         for arc in &self.arcs {
-            arc.draw(context, cmod);
+            arc.draw(context, cmod)?;
         }
         for pin in &self.pins {
-            pin.draw(context, cmod);
+            pin.draw(context, cmod)?;
         }
+        Ok(())
     }
 }
 
 impl SymbolTemp {
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, cmod: &CanvasMod) {
+    fn draw(
+        &self,
+        context: &web_sys::CanvasRenderingContext2d,
+        cmod: &CanvasMod,
+    ) -> Result<(), JsValue> {
         for symb in &self.symbs {
-            symb.draw(context, cmod)
+            symb.draw(context, cmod)?;
         }
+        Ok(())
     }
 }
 
 impl SymbolInst {
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, cmod: &CanvasMod) {
+    fn draw(
+        &self,
+        context: &web_sys::CanvasRenderingContext2d,
+        cmod: &CanvasMod,
+    ) -> Result<(), JsValue> {
         if self.parent.is_some() {
             let angle = (self.pos.a) / 180.0 * f64::consts::PI;
-            context.translate(self.pos.x * cmod.scale, self.pos.y * cmod.scale);
+            context.translate(self.pos.x * cmod.scale, self.pos.y * cmod.scale)?;
             context.scale(
                 -(self.mirror.0 as i32 as f64 * 2.0 - 1.0),
                 (self.mirror.1 as i32 as f64 * 2.0 - 1.0),
-            );
-            context.rotate(angle);
+            )?;
+            context.rotate(angle)?;
             // let mut cmod = cmod.clone();
             // cmod.flip = (cmod.flip.0 ^ self.mirror.0, cmod.flip.1 ^ self.mirror.1);
-            self.parent.as_ref().unwrap().draw(context, &cmod);
+            self.parent.as_ref().unwrap().draw(context, &cmod)?;
 
-            context.rotate(-angle);
+            context.rotate(-angle)?;
             context.scale(
                 -(self.mirror.0 as i32 as f64 * 2.0 - 1.0),
                 (self.mirror.1 as i32 as f64 * 2.0 - 1.0),
-            );
-            context.translate(-(self.pos.x * cmod.scale), -(self.pos.y * cmod.scale));
+            )?;
+            context.translate(-(self.pos.x * cmod.scale), -(self.pos.y * cmod.scale))?;
 
             // apparently properties are absolute compared to their parent symbol?
             // todo collate template props
             for prop in &self.props {
-                prop.draw(context, &cmod, self.pos.a);
+                prop.draw(context, &cmod, self.pos.a)?;
             }
         }
+        Ok(())
     }
 }
 
 impl Label {
-    fn draw(&self, context: &web_sys::CanvasRenderingContext2d, cmod: &CanvasMod) {
+    fn draw(
+        &self,
+        context: &web_sys::CanvasRenderingContext2d,
+        cmod: &CanvasMod,
+    ) -> Result<(), JsValue> {
         // draws an label based on label type
         // todo : type based rendering
         let size = 1.0; // todo global size?
         let angle = (self.pos.a) / 180.0 * f64::consts::PI;
-        context.translate((self.pos.x) * cmod.scale, (self.pos.y) * cmod.scale);
-        context.rotate(-angle); // why inverse?
+        context.translate((self.pos.x) * cmod.scale, (self.pos.y) * cmod.scale)?;
+        context.rotate(-angle)?; // why inverse?
         match self.shape {
             Shape::Heir => {
                 context.set_font(format!("{}px monospace", (1.8 * cmod.scale) as i32).as_str());
                 context.set_text_baseline("middle");
                 if angle > f64::consts::PI * 0.5 && angle <= f64::consts::PI * 1.5 {
-                    context.rotate(-f64::consts::PI); // half rotate to flip text
+                    context.rotate(-f64::consts::PI)?; // half rotate to flip text
                     context.set_text_align("right");
-                    context.fill_text(self.id.as_str(), -(size * 2.5) * cmod.scale, 0.0);
-                    context.rotate(f64::consts::PI); // finish rotation
+                    context.fill_text(self.id.as_str(), -(size * 2.5) * cmod.scale, 0.0)?;
+                    context.rotate(f64::consts::PI)?; // finish rotation
                 } else {
                     context.set_text_align("left");
-                    context.fill_text(self.id.as_str(), (size * 2.5) * cmod.scale, 0.0);
+                    context.fill_text(self.id.as_str(), (size * 2.5) * cmod.scale, 0.0)?;
                 }
                 context.set_text_baseline("bottom");
                 // draw frame
@@ -357,13 +422,14 @@ impl Label {
             }
             _ => {}
         }
-        context.rotate(angle);
-        context.translate(-((self.pos.x) * cmod.scale), -((self.pos.y) * cmod.scale));
+        context.rotate(angle)?;
+        context.translate(-((self.pos.x) * cmod.scale), -((self.pos.y) * cmod.scale))?;
+        Ok(())
     }
 }
 
 impl Schematic {
-    pub fn draw(&self, canvas: &web_sys::HtmlCanvasElement, scale: f64) {
+    pub fn draw(&self, canvas: &web_sys::HtmlCanvasElement, scale: f64) -> Result<(), JsValue> {
         canvas.set_height((1080.0 * scale) as u32);
         canvas.set_width((1080.0 * 1.414 * scale) as u32);
         let context = &canvas
@@ -379,27 +445,28 @@ impl Schematic {
             theme: Theme::new(),
         }; //todo fix scaling
         for symb in &self.symbs {
-            symb.draw(context, cmod);
+            symb.draw(context, cmod)?;
         }
         for wire in &self.wires {
-            wire.draw(context, cmod);
+            wire.draw(context, cmod)?;
         }
         for junc in &self.juncs {
-            junc.draw(context, cmod);
+            junc.draw(context, cmod)?;
         }
         for text in &self.texts {
-            text.draw(context, cmod);
+            text.draw(context, cmod)?;
         }
         for poly in &self.polys {
-            poly.draw(context, cmod);
+            poly.draw(context, cmod)?;
         }
         for nocon in &self.nocons {
-            nocon.draw(context, cmod);
+            nocon.draw(context, cmod)?;
         }
         for label in &self.labels {
-            label.draw(context, cmod);
+            label.draw(context, cmod)?;
         }
 
         context.stroke();
+        Ok(())
     }
 }
