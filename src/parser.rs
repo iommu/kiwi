@@ -6,7 +6,6 @@ fn get_name(object: &Sexp) -> &str {
     match object.is_list() {
         true => object.list().unwrap()[0].string().unwrap().as_str(),
         false => object.string().unwrap().as_str(),
-        _ => "",
     }
 }
 
