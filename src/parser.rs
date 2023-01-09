@@ -2,13 +2,12 @@ use crate::schematic::*;
 use symbolic_expressions;
 use symbolic_expressions::Sexp;
 
-
 fn get_name(object: &Sexp) -> &str {
-  match object.is_list() {
-      true => object.list().unwrap()[0].string().unwrap().as_str(),
-      false => object.string().unwrap().as_str(),
-      _ => "",
-  }
+    match object.is_list() {
+        true => object.list().unwrap()[0].string().unwrap().as_str(),
+        false => object.string().unwrap().as_str(),
+        _ => "",
+    }
 }
 
 // generic parsers
@@ -296,6 +295,56 @@ impl Text {
     }
 }
 
+impl Effect {
+    pub fn from_sexp(obj: &Sexp) -> Effect {
+        let mut effect = Effect::blank();
+        //
+        for obj in obj.list().unwrap() {
+            let name = get_name(obj);
+            match (obj.is_list(), name) {
+                (true, "font") => {
+                    for obj in obj.list().unwrap() {
+                        let name = get_name(obj);
+                        match (obj.is_list(), name) {
+                            (true, "face") => {
+                              effect.font_name = obj.list().unwrap()[1].string().unwrap().clone();
+                            }
+                            (true, "size") => {
+                                effect.size = (
+                                    obj.list().unwrap()[1].string().unwrap().parse::<f64>().unwrap(),
+                                    obj.list().unwrap()[2].string().unwrap().parse::<f64>().unwrap(),
+                                );
+                            }
+                            (true, "thickness") => {
+                              effect.thickness = obj.list().unwrap()[1].string().unwrap().parse::<f64>().unwrap();
+                            }
+                            (true, "line_spacing") => {
+                              effect.line_spacing = obj.list().unwrap()[1].string().unwrap().parse::<f64>().unwrap();
+                            }
+                            (false, "bold") => {
+                              effect.bold = true;
+                            }
+                            (false, "italic") => {
+                              effect.italic = true;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                (true, "justify") => {
+                    // todo : justify
+                }
+                (false, "hide") => {
+                    effect.hide = true;
+                }
+                _ => {}
+            }
+        }
+        //
+        effect
+    }
+}
+
 impl Wire {
     pub fn from_sexp(obj: &Sexp) -> Wire {
         let mut wire = Wire::blank();
@@ -530,44 +579,42 @@ impl SymbolTemp {
 }
 
 impl Schematic {
-  pub fn from_sexp(obj: &Sexp) -> Schematic {
-    let mut schem = Schematic::blank();
+    pub fn from_sexp(obj: &Sexp) -> Schematic {
+        let mut schem = Schematic::blank();
 
-
-
-    // Lets Parse!
-    for obj in obj.list().unwrap() {
-        //
-        let name = get_name(obj);
-        match (obj.is_list(), name) {
-            (false, "version") => schem.version = obj.string().unwrap().parse::<i32>().unwrap(),
-            (true, "lib_symbols") => {
-                for obj in obj.list().unwrap() {
-                    let name = get_name(obj);
-                    match (obj.is_list(), name) {
-                        (true, "symbol") => {
-                            let symb = SymbolTemp::from_sexp(obj);
-                            schem.lib.insert(symb.id.clone(), symb);
+        // Lets Parse!
+        for obj in obj.list().unwrap() {
+            //
+            let name = get_name(obj);
+            match (obj.is_list(), name) {
+                (false, "version") => schem.version = obj.string().unwrap().parse::<i32>().unwrap(),
+                (true, "lib_symbols") => {
+                    for obj in obj.list().unwrap() {
+                        let name = get_name(obj);
+                        match (obj.is_list(), name) {
+                            (true, "symbol") => {
+                                let symb = SymbolTemp::from_sexp(obj);
+                                schem.lib.insert(symb.id.clone(), symb);
+                            }
+                            _ => {}
                         }
-                        _ => {}
                     }
                 }
+                (true, "wire") => schem.wires.push(Wire::from_sexp(obj)),
+                (true, "junction") => schem.juncs.push(Junction::from_sexp(obj)),
+                (true, "text") => schem.texts.push(Text::from_sexp(obj)),
+                (true, "polyline") => schem.polys.push(Polyline::from_sexp(obj)),
+                (true, "no_connect") => schem.nocons.push(Noconnect::from_sexp(obj)), // todo : fix naming
+                (true, "hierarchical_label") => schem.labels.push(Label::from_sexp(obj)),
+                (true, "symbol") => {
+                    let mut symb = SymbolInst::from_sexp(obj);
+                    symb.parent = Some(schem.lib.get(&symb.id).unwrap().clone());
+                    schem.symbs.push(symb);
+                }
+                _ => {}
             }
-            (true, "wire") => schem.wires.push(Wire::from_sexp(obj)),
-            (true, "junction") => schem.juncs.push(Junction::from_sexp(obj)),
-            (true, "text") => schem.texts.push(Text::from_sexp(obj)),
-            (true, "polyline") => schem.polys.push(Polyline::from_sexp(obj)),
-            (true, "no_connect") => schem.nocons.push(Noconnect::from_sexp(obj)), // todo : fix naming
-            (true, "hierarchical_label") => schem.labels.push(Label::from_sexp(obj)),
-            (true, "symbol") => {
-                let mut symb = SymbolInst::from_sexp(obj);
-                symb.parent = Some(schem.lib.get(&symb.id).unwrap().clone());
-                schem.symbs.push(symb);
-            }
-            _ => {}
         }
+        //
+        schem
     }
-    //
-    schem
-}
 }

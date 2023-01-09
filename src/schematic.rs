@@ -201,11 +201,29 @@ impl Text {
 }
 
 #[derive(Debug, Clone)]
-pub struct Effect {}
+pub struct Effect {
+    pub font_name: String,
+    pub size: (f64, f64),
+    pub thickness: f64,
+    pub bold: bool,
+    pub italic: bool,
+    pub line_spacing: f64,
+    pub justify: (bool, bool, bool),
+    pub hide: bool,
+}
 
 impl Effect {
     pub fn blank() -> Effect {
-        Effect {}
+        Effect {
+            font_name: "".to_string(),
+            size: (0.0, 0.0),
+            thickness: 0.0,
+            bold: false,
+            italic: false,
+            line_spacing: 0.0,
+            justify: (false, false, false),
+            hide: false,
+        }
     }
 }
 
