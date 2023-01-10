@@ -375,35 +375,16 @@ impl Wire {
     }
 }
 
-impl Noconnect {
-    pub fn from_sexp(obj: &Sexp) -> Noconnect {
-        let mut nconn = Noconnect::blank();
-        //
-        for obj in obj.list().unwrap() {
-            let name = get_name(obj);
-            match (obj.is_list(), name) {
-                (true, "at") => {
-                    nconn.pos = Point::from_sexp(obj);
-                }
-                // todo color
-                (true, "uuid") => {
-                    nconn.uuid = obj.list().unwrap()[1].string().unwrap().to_string();
-                }
-                _ => { // should be string
-                     //println!("{:?}", name);
-                }
-            }
-        }
-        //
-        nconn
-    }
-}
-
 impl Label {
     pub fn from_sexp(obj: &Sexp) -> Label {
         let mut label = Label::blank();
         //
         let label_name = get_name(obj);
+        label.shape = match label_name {
+            "hierarchical_label" => Style::Heir,
+            "no_connect" => Style::Noconn,
+            _ => Style::Local,
+        };
         for obj in obj.list().unwrap() {
             let name = get_name(obj);
             match (obj.is_list(), name) {
@@ -411,10 +392,6 @@ impl Label {
                     label.id = obj.string().unwrap().clone();
                 }
                 (true, "shape") => {
-                    label.shape = match label_name {
-                        "hierarchical_label" => Shape::Heir,
-                        _ => Shape::Local,
-                    }
                     // todo shape = input...
                 }
                 (true, "at") => {
@@ -605,8 +582,7 @@ impl Schematic {
                 (true, "junction") => schem.juncs.push(Junction::from_sexp(obj)),
                 (true, "text") => schem.texts.push(Text::from_sexp(obj)),
                 (true, "polyline") => schem.polys.push(Polyline::from_sexp(obj)),
-                (true, "no_connect") => schem.nocons.push(Noconnect::from_sexp(obj)), // todo : fix naming
-                (true, "hierarchical_label") => schem.labels.push(Label::from_sexp(obj)),
+                (true, "hierarchical_label") | (true, "no_connect") => schem.labels.push(Label::from_sexp(obj)),
                 (true, "symbol") => {
                     let mut symb = SymbolInst::from_sexp(obj);
                     symb.parent = Some(schem.lib.get(&symb.id).unwrap().clone());

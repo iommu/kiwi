@@ -266,25 +266,6 @@ impl Arc {
 }
 
 #[derive(Debug, Clone)]
-pub struct Noconnect {
-    pub pos: Point,
-    pub uuid: UUID,
-}
-
-impl Noconnect {
-    pub fn blank() -> Noconnect {
-        Noconnect {
-            pos: Point {
-                x: 0.0,
-                y: 0.0,
-                a: 0.0,
-            },
-            uuid: "".to_string(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 pub struct Property {
     pub key: String,
     pub value: String,
@@ -397,7 +378,7 @@ impl SymbolInst {
 }
 
 #[derive(Debug, Clone)]
-pub enum Shape {
+pub enum Style {
     Heir,
     Global,
     Local,
@@ -407,7 +388,7 @@ pub enum Shape {
 #[derive(Debug, Clone)]
 pub struct Label {
     pub id: String,
-    pub shape: Shape,
+    pub shape: Style,
     pub pos: Point,
     pub effect: Effect,
     pub uuid: UUID,
@@ -417,7 +398,7 @@ impl Label {
     pub fn blank() -> Label {
         Label {
             id: "".to_string(),
-            shape: Shape::Heir,
+            shape: Style::Heir,
             pos: Point::blank(),
             effect: Effect::blank(),
             uuid: "".to_string(),
@@ -431,7 +412,6 @@ pub struct Schematic {
     pub juncs: Vec<Junction>,
     pub texts: Vec<Text>,
     pub polys: Vec<Polyline>,
-    pub nocons: Vec<Noconnect>,
     pub labels: Vec<Label>,
     pub lib: HashMap<String, SymbolTemp>,
     pub symbs: Vec<SymbolInst>,
@@ -446,7 +426,6 @@ impl Schematic {
             juncs: Vec::<Junction>::new(),
             texts: Vec::<Text>::new(),
             polys: Vec::<Polyline>::new(),
-            nocons: Vec::<Noconnect>::new(),
             labels: Vec::<Label>::new(),
             lib: HashMap::<String, SymbolTemp>::new(),
             symbs: Vec::<SymbolInst>::new(),

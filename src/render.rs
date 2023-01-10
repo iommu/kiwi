@@ -235,34 +235,6 @@ impl Arc {
     }
 }
 
-impl Noconnect {
-    fn draw(
-        &self,
-        context: &web_sys::CanvasRenderingContext2d,
-        cmod: &CanvasMod,
-    ) -> Result<(), JsValue> {
-        // draws an "x"
-        let size = 1.0;
-        context.move_to(
-            (self.pos.x - size) * cmod.scale,
-            (self.pos.y - size) * cmod.scale,
-        );
-        context.line_to(
-            (self.pos.x + size) * cmod.scale,
-            (self.pos.y + size) * cmod.scale,
-        );
-        context.move_to(
-            (self.pos.x - size) * cmod.scale,
-            (self.pos.y + size) * cmod.scale,
-        );
-        context.line_to(
-            (self.pos.x + size) * cmod.scale,
-            (self.pos.y - size) * cmod.scale,
-        );
-        Ok(())
-    }
-}
-
 impl Property {
     fn draw(
         &self,
@@ -399,7 +371,7 @@ impl Label {
         context.translate((self.pos.x) * cmod.scale, (self.pos.y) * cmod.scale)?;
         context.rotate(-angle)?; // why inverse?
         match self.shape {
-            Shape::Heir => {
+            Style::Heir => {
                 context.set_font(format!("{}px monospace", (1.8 * cmod.scale) as i32).as_str());
                 context.set_text_baseline("middle");
                 if angle > f64::consts::PI * 0.5 && angle <= f64::consts::PI * 1.5 {
@@ -419,6 +391,14 @@ impl Label {
                 context.line_to((size * 2.0) * cmod.scale, -(size) * cmod.scale);
                 context.line_to((size) * cmod.scale, -(size) * cmod.scale);
                 context.line_to(0.0, 0.0);
+            }
+            Style::Noconn => {
+                // draws an "x"
+                let size = 1.0;
+                context.move_to(-size * cmod.scale, -size * cmod.scale);
+                context.line_to(size * cmod.scale, size * cmod.scale);
+                context.move_to(-size * cmod.scale, size * cmod.scale);
+                context.line_to(size * cmod.scale, -size * cmod.scale);
             }
             _ => {}
         }
@@ -458,9 +438,6 @@ impl Schematic {
         }
         for poly in &self.polys {
             poly.draw(context, cmod)?;
-        }
-        for nocon in &self.nocons {
-            nocon.draw(context, cmod)?;
         }
         for label in &self.labels {
             label.draw(context, cmod)?;
