@@ -407,6 +407,11 @@ impl Label {
 }
 
 #[derive(Debug, Clone)]
+pub enum Page {
+    A4
+}
+
+#[derive(Debug, Clone)]
 pub struct Schematic {
     pub wires: Vec<Wire>,
     pub juncs: Vec<Junction>,
@@ -417,6 +422,7 @@ pub struct Schematic {
     pub symbs: Vec<SymbolInst>,
     //
     pub version: i32,
+    pub page: Page,
 }
 
 impl Schematic {
@@ -430,6 +436,7 @@ impl Schematic {
             lib: HashMap::<String, SymbolTemp>::new(),
             symbs: Vec::<SymbolInst>::new(),
             version: 0i32,
+            page: Page::A4,
         }
     }
 

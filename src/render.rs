@@ -5,6 +5,30 @@ use crate::schematic::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
+#[wasm_bindgen]
+extern "C" {
+    // Use `js_namespace` here to bind `console.log(..)` instead of just
+    // `log(..)`
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+
+    // The `console.log` is quite polymorphic, so we can bind it with multiple
+    // signatures. Note that we need to use `js_name` to ensure we always call
+    // `log` in JS.
+    #[wasm_bindgen(js_namespace = console, js_name = log)]
+    fn log_u32(a: u32);
+
+    // Multiple arguments too!
+    #[wasm_bindgen(js_namespace = console, js_name = log)]
+    fn log_many(a: &str, b: &str);
+}
+
+macro_rules! console_log {
+    // Note that this is using the `log` function imported above during
+    // `bare_bones`
+    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+}
+
 impl Wire {
     fn draw(
         &self,
@@ -408,6 +432,152 @@ impl Label {
     }
 }
 
+impl Page {
+    fn draw(
+        &self,
+        context: &web_sys::CanvasRenderingContext2d,
+        cmod: &CanvasMod,
+    ) -> Result<(), JsValue> {
+        let (size, margin) = match self {
+            Page::A4 => {
+                // size // margin (tlbr)
+                ((297.0, 210.0), (10.0, 10.0, 10.0, 10.0))
+            }
+        };
+        // draw full page size
+        Rect {
+            poss: (
+                Point {
+                    x: 0.0,
+                    y: 0.0,
+                    a: 0.0,
+                },
+                Point {
+                    x: size.0,
+                    y: size.1,
+                    a: 0.0,
+                },
+            ),
+            stroke: Stroke::blank(),
+            fill: FillType::None,
+            uuid: "".to_string(),
+        }
+        .draw(context, cmod);
+        // draw page margin
+        Rect {
+            poss: (
+                Point {
+                    x: margin.1,
+                    y: margin.0,
+                    a: 0.0,
+                },
+                Point {
+                    x: size.0 - margin.3,
+                    y: size.1 - margin.2,
+                    a: 0.0,
+                },
+            ),
+            stroke: Stroke::blank(),
+            fill: FillType::None,
+            uuid: "".to_string(),
+        }
+        .draw(context, cmod);
+        Rect {
+            poss: (
+                Point {
+                    x: margin.1 + 2.0,
+                    y: margin.0 + 2.0,
+                    a: 0.0,
+                },
+                Point {
+                    x: size.0 - margin.3 - 2.0,
+                    y: size.1 - margin.2 - 2.0,
+                    a: 0.0,
+                },
+            ),
+            stroke: Stroke::blank(),
+            fill: FillType::None,
+            uuid: "".to_string(),
+        }
+        .draw(context, cmod);
+        // draw "chess" grid
+        let inc = 50;
+        for index in 0..(size.0 / inc as f64) as u32 + 1 {
+            for y in [margin.0, size.1 - margin.2 - 2.0] {
+                let x = (index * 50 + 25) as f64 + margin.1;
+                if x > size.0 + margin.1 - margin.3 {
+                    continue;
+                }
+                Text {
+                    text: (index + 1).to_string(),
+                    pos: Point {
+                        x: x,
+                        y: y + 1.7,
+                        a: 0.0,
+                    },
+                    uuid: "".to_string(),
+                }
+                .draw(context, cmod);
+                let x = x + 25.0;
+                if x > size.0 + margin.1 - margin.3 {
+                    continue;
+                }
+                Rect {
+                    poss: (
+                        Point { x: x, y: y, a: 0.0 },
+                        Point {
+                            x: x,
+                            y: y + 2.0,
+                            a: 0.0,
+                        },
+                    ),
+                    stroke: Stroke::blank(),
+                    fill: FillType::None,
+                    uuid: "".to_string(),
+                }
+                .draw(context, cmod);
+            }
+        }
+        for index in 0..(size.1 / inc as f64) as u32 + 1 {
+            for x in [margin.1, size.0 - margin.3 - 2.0] {
+                let y = (index * 50 + 25) as f64 + margin.0;
+                if y > size.1 + margin.0 - margin.2 {
+                    continue;
+                }
+                Text {
+                    text: ((index + 97) as u8 as char).to_string(),
+                    pos: Point {
+                        x: x + 0.3,
+                        y: y,
+                        a: 0.0,
+                    },
+                    uuid: "".to_string(),
+                }
+                .draw(context, cmod);
+                let y = y + 25.0;
+                if y > size.1 + margin.0 - margin.2 {
+                    continue;
+                }
+                Rect {
+                    poss: (
+                        Point { x: x, y: y, a: 0.0 },
+                        Point {
+                            x: x + 2.0,
+                            y: y,
+                            a: 0.0,
+                        },
+                    ),
+                    stroke: Stroke::blank(),
+                    fill: FillType::None,
+                    uuid: "".to_string(),
+                }
+                .draw(context, cmod);
+            }
+        }
+        Ok(())
+    }
+}
+
 impl Schematic {
     pub fn draw(&self, canvas: &web_sys::HtmlCanvasElement, scale: f64) -> Result<(), JsValue> {
         canvas.set_height((1080.0 * scale) as u32);
@@ -424,6 +594,8 @@ impl Schematic {
             flip: (false, false),
             theme: Theme::new(),
         }; //todo fix scaling
+        self.page.draw(context, cmod)?;
+
         for symb in &self.symbs {
             symb.draw(context, cmod)?;
         }
